@@ -60,7 +60,9 @@ function showConfirmEmail() {
 }
 
 // ── Nav auth state ──
-function updateNavAuth(loggedIn: boolean) {
+function updateNavAuth(session: { user: { email?: string; user_metadata?: { full_name?: string } } } | null) {
+  const loggedIn = !!session;
+
   (['btn-signup-desk', 'btn-login-desk', 'btn-signup-mob', 'btn-login-mob'] as const).forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = loggedIn ? 'none' : '';
@@ -69,6 +71,27 @@ function updateNavAuth(loggedIn: boolean) {
     const el = document.getElementById(id);
     if (el) el.style.display = loggedIn ? '' : 'none';
   });
+
+  const chipDesk = document.getElementById('nav-user-chip') as HTMLElement | null;
+  const chipMob  = document.getElementById('mobile-user-row') as HTMLElement | null;
+  if (chipDesk) chipDesk.style.display = loggedIn ? 'flex' : 'none';
+  if (chipMob)  chipMob.style.display  = loggedIn ? 'flex' : 'none';
+
+  if (loggedIn && session) {
+    const user     = session.user;
+    const fullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+    const initials = fullName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase();
+    const email    = user.email ?? '';
+
+    const el = (id: string) => document.getElementById(id);
+    const setText = (id: string, text: string) => { const e = el(id); if (e) e.textContent = text; };
+
+    setText('nav-user-avatar',  initials);
+    setText('nav-user-name',    fullName.split(' ')[0]);
+    setText('mobile-user-avatar', initials);
+    setText('mobile-user-name',   fullName);
+    setText('mobile-user-email',  email);
+  }
 }
 
 // ── Sign Up ──
@@ -149,9 +172,9 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 
 // ── Session state ──
 supabase.auth.onAuthStateChange((_event, session) => {
-  updateNavAuth(!!session);
+  updateNavAuth(session);
 });
 
 supabase.auth.getSession().then(({ data: { session } }) => {
-  updateNavAuth(!!session);
+  updateNavAuth(session);
 });
