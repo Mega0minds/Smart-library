@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bokify – Smart Library Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <script type="module" src="/src/main.ts"></script>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        background: #fff;
+        color: #111;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* ── NAVBAR ── */
+      .navbar {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: #fff;
+        border-bottom: 1px solid #f1f1f1;
+        height: 62px;
+        display: flex;
+        align-items: center;
+        padding: 0 2rem;
+      }
+      .navbar-inner {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 0;
+      }
+
+      /* Brand */
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        text-decoration: none;
+        margin-right: 2.2rem;
+        flex-shrink: 0;
+      }
+      .brand-icon {
+        width: 30px;
+        height: 30px;
+        background: #3d6cfa;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .brand-name {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #111;
+        letter-spacing: -0.01em;
+      }
+
+      /* Nav links */
+      .nav-links {
+        display: flex;
+        align-items: center;
+        list-style: none;
+        gap: 0.1rem;
+        flex: 1;
+      }
+      .nav-links a {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #222;
+        text-decoration: none;
+        padding: 0.3rem 0.75rem;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        transition: color 0.15s;
+        white-space: nowrap;
+      }
+      .nav-links a:hover { color: #3d6cfa; }
+      .nav-links .chevron {
+        width: 12px;
+        height: 12px;
+        opacity: 0.5;
+        margin-top: 1px;
+      }
+
+      /* Right controls */
+      .nav-right {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        flex-shrink: 0;
+      }
+      .search-bar {
+        display: flex;
+        align-items: center;
+        background: #f5f5f5;
+        border-radius: 999px;
+        padding: 0.38rem 0.75rem 0.38rem 1rem;
+        gap: 0.4rem;
+        width: 200px;
+      }
+      .search-bar input {
+        border: none;
+        background: transparent;
+        font-size: 0.82rem;
+        color: #666;
+        outline: none;
+        width: 100%;
+        font-family: inherit;
+      }
+      .search-bar input::placeholder { color: #aaa; }
+      .search-bar button {
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        color: #aaa;
+        display: flex;
+        align-items: center;
+      }
+      .btn-signup {
+        display: inline-flex;
+        align-items: center;
+        background: transparent;
+        color: #3d6cfa;
+        text-decoration: none;
+        border-radius: 8px;
+        padding: 0.4rem 1.1rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        border: 1.5px solid #3d6cfa;
+        transition: background 0.15s, transform 0.1s;
+        white-space: nowrap;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .btn-signup:hover { background: rgba(61,108,250,0.07); transform: translateY(-1px); }
+      .btn-login {
+        display: inline-flex;
+        align-items: center;
+        background: #3d6cfa;
+        color: #fff;
+        text-decoration: none;
+        border-radius: 8px;
+        padding: 0.42rem 1.2rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        transition: background 0.15s, transform 0.1s;
+        white-space: nowrap;
+        cursor: pointer;
+        font-family: inherit;
+        border: none;
+      }
+      .btn-login:hover { background: #2a56e8; transform: translateY(-1px); }
+      .btn-logout {
+        display: inline-flex;
+        align-items: center;
+        background: transparent;
+        color: #888;
+        text-decoration: none;
+        border-radius: 8px;
+        padding: 0.4rem 1.1rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        border: 1.5px solid #ddd;
+        transition: background 0.15s, color 0.15s, transform 0.1s;
+        white-space: nowrap;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .btn-logout:hover { background: #f5f5f5; color: #555; transform: translateY(-1px); }
+
+      /* ── GLASS PRISM MODAL ── */
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(8, 8, 24, 0.6);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.28s ease;
+      }
+      .modal-overlay.open {
+        opacity: 1;
+        pointer-events: all;
+      }
+      .modal-card {
+        position: relative;
+        width: 100%;
+        max-width: 420px;
+        border-radius: 22px;
+        padding: 2.4rem 2rem 2rem;
+        background: rgba(255, 255, 255, 0.11);
+        backdrop-filter: blur(36px) saturate(180%);
+        -webkit-backdrop-filter: blur(36px) saturate(180%);
+        box-shadow:
+          0 30px 80px rgba(0, 0, 0, 0.45),
+          inset 0 1.5px 0 rgba(255, 255, 255, 0.45),
+          inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+        transform: scale(0.9) translateY(24px);
+        transition: transform 0.38s cubic-bezier(0.34, 1.46, 0.64, 1);
+      }
+      .modal-overlay.open .modal-card {
+        transform: scale(1) translateY(0);
+      }
+      /* Iridescent glass border */
+      .modal-card::before {
+        content: '';
+        position: absolute;
+        inset: -1.5px;
+        border-radius: 23.5px;
+        background: linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.75) 0%,
+          rgba(180, 210, 255, 0.55) 35%,
+          rgba(160, 130, 255, 0.45) 65%,
+          rgba(120, 200, 255, 0.5) 100%
+        );
+        z-index: -1;
+        opacity: 0.65;
+      }
+      /* Inner shimmer highlight */
+      .modal-card::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 22px;
+        background: linear-gradient(
+          135deg,
+          rgba(255,255,255,0.18) 0%,
+          rgba(255,255,255,0.04) 40%,
+          rgba(180,140,255,0.06) 70%,
+          rgba(100,180,255,0.10) 100%
+        );
+        pointer-events: none;
+      }
+      .modal-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(255,255,255,0.15);
+        border: none;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: rgba(255,255,255,0.8);
+        transition: background 0.15s;
+        z-index: 1;
+      }
+      .modal-close:hover { background: rgba(255,255,255,0.25); }
+      .modal-logo {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 1.5rem;
+        position: relative;
+        z-index: 1;
+      }
+      .modal-logo-icon {
+        width: 32px;
+        height: 32px;
+        background: #3d6cfa;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 14px rgba(61,108,250,0.5);
+      }
+      .modal-logo-name {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: -0.01em;
+      }
+      .modal-title {
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: #fff;
+        letter-spacing: -0.02em;
+        margin-bottom: 0.3rem;
+        position: relative;
+        z-index: 1;
+      }
+      .modal-sub {
+        font-size: 0.82rem;
+        color: rgba(255,255,255,0.5);
+        margin-bottom: 1.6rem;
+        position: relative;
+        z-index: 1;
+      }
+      .modal-form {
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+        position: relative;
+        z-index: 1;
+      }
+      .modal-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+      }
+      .modal-field label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: rgba(255,255,255,0.6);
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+      .modal-field input {
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.18);
+        border-radius: 10px;
+        padding: 0.65rem 0.9rem;
+        font-size: 0.875rem;
+        color: #fff;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.18s, background 0.18s;
+      }
+      .modal-field input::placeholder { color: rgba(255,255,255,0.3); }
+      .modal-field input:focus {
+        border-color: rgba(61,108,250,0.7);
+        background: rgba(255,255,255,0.14);
+      }
+      .modal-submit {
+        margin-top: 0.4rem;
+        width: 100%;
+        padding: 0.72rem;
+        background: #3d6cfa;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        cursor: pointer;
+        font-family: inherit;
+        box-shadow: 0 4px 20px rgba(61,108,250,0.45);
+        transition: background 0.15s, transform 0.12s, box-shadow 0.15s;
+      }
+      .modal-submit:hover {
+        background: #2a56e8;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 24px rgba(61,108,250,0.55);
+      }
+      .modal-divider {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 0.4rem 0;
+        position: relative;
+        z-index: 1;
+      }
+      .modal-divider::before,
+      .modal-divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: rgba(255,255,255,0.15);
+      }
+      .modal-divider span {
+        font-size: 0.75rem;
+        color: rgba(255,255,255,0.35);
+      }
+      .modal-footer {
+        text-align: center;
+        font-size: 0.8rem;
+        color: rgba(255,255,255,0.45);
+        position: relative;
+        z-index: 1;
+      }
+      .modal-footer a {
+        color: rgba(140,180,255,0.9);
+        text-decoration: none;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .modal-footer a:hover { text-decoration: underline; }
+      .modal-tabs {
+        display: flex;
+        gap: 0;
+        margin-bottom: 1.6rem;
+        background: rgba(255,255,255,0.08);
+        border-radius: 10px;
+        padding: 3px;
+        position: relative;
+        z-index: 1;
+      }
+      .modal-tab {
+        flex: 1;
+        padding: 0.45rem;
+        text-align: center;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: rgba(255,255,255,0.45);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.18s, color 0.18s;
+        user-select: none;
+      }
+      .modal-tab.active {
+        background: rgba(255,255,255,0.18);
+        color: #fff;
+      }
+
+      /* ── HERO ── */
+      .hero {
+        min-height: calc(100vh - 62px);
+        background: #f6f8ff;
+        background-image:
+          radial-gradient(ellipse 70% 80% at 75% 50%, rgba(200, 215, 255, 0.55) 0%, transparent 70%),
+          radial-gradient(ellipse 40% 60% at 20% 80%, rgba(210, 220, 255, 0.2) 0%, transparent 60%);
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        position: relative;
+      }
+      .hero-container {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 3rem 2rem;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        align-items: center;
+        gap: 2rem;
+      }
+
+      /* Left text */
+      .hero-text { padding-right: 1rem; }
+      .eyebrow {
+        font-size: 0.82rem;
+        font-weight: 500;
+        color: #777;
+        margin-bottom: 0.9rem;
+        letter-spacing: 0.01em;
+      }
+      .headline {
+        font-size: clamp(2.6rem, 4.5vw, 3.5rem);
+        font-weight: 800;
+        color: #0c0c0c;
+        line-height: 1.1;
+        letter-spacing: -0.03em;
+        margin-bottom: 1.8rem;
+      }
+      .btn-buy {
+        display: inline-flex;
+        align-items: center;
+        background: #3d6cfa;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 0.68rem 1.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        transition: background 0.18s, transform 0.12s;
+        letter-spacing: -0.01em;
+      }
+      .btn-buy:hover { background: #2a56e8; transform: translateY(-1px); }
+
+      .partners {
+        display: flex;
+        align-items: center;
+        gap: 1.4rem;
+        margin-top: 2rem;
+        flex-wrap: wrap;
+      }
+      .partner {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        opacity: 0.75;
+      }
+      .partner-name {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #1a1a1a;
+        letter-spacing: -0.01em;
+      }
+      .partner-sub {
+        font-size: 0.55rem;
+        color: #777;
+        font-weight: 400;
+        line-height: 1.2;
+      }
+      .divider {
+        width: 1px;
+        height: 22px;
+        background: #ddd;
+      }
+
+      /* ── BOOKS ── */
+      .hero-books {
+        position: relative;
+        height: 440px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+      }
+
+      .book {
+        position: absolute;
+        border-radius: 3px 8px 8px 3px;
+        overflow: hidden;
+      }
+
+      /* Spine highlight shared */
+      .book::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0;
+        width: 18px;
+        height: 100%;
+        background: linear-gradient(to right, rgba(0,0,0,0.35), rgba(0,0,0,0.08) 60%, transparent);
+        z-index: 10;
+        border-radius: 3px 0 0 3px;
+      }
+
+      /* ── Book 1: The Black Universe (front, left-leaning) ── */
+      .book-1 {
+        width: 210px;
+        height: 308px;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-35%) rotate(-6deg);
+        z-index: 3;
+        box-shadow:
+          8px 12px 40px rgba(0,0,0,0.38),
+          2px 4px 12px rgba(0,0,0,0.25),
+          inset -4px 0 8px rgba(0,0,0,0.2);
+      }
+      .book-1-bg {
+        position: absolute;
+        inset: 0;
+        /* Dark moody background - forest/night atmosphere */
+        background:
+          linear-gradient(175deg, #1e2a1e 0%, #2a3420 30%, #1a1f14 55%, #3d2a10 75%, #5c3d18 88%, #6b4a1a 100%);
+      }
+      /* Atmospheric light effect */
+      .book-1-bg::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(ellipse 100px 120px at 50% 60%, rgba(180, 110, 30, 0.35) 0%, transparent 70%),
+          radial-gradient(ellipse 80px 60px at 50% 85%, rgba(200, 130, 40, 0.4) 0%, transparent 60%),
+          linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 40%, rgba(0,0,0,0.6) 100%);
+      }
+      /* Hooded figure silhouette */
+      .book-1-figure {
+        position: absolute;
+        bottom: 55px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100px;
+        height: 160px;
+        z-index: 2;
+      }
+      .book-1-content {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 14px 12px 16px;
+      }
+      .b1-series {
+        font-size: 0.45rem;
+        letter-spacing: 0.18em;
+        color: rgba(255,255,255,0.55);
+        text-transform: uppercase;
+        text-align: center;
+        margin-bottom: auto;
+      }
+      .b1-title {
+        text-align: center;
+        margin-top: auto;
+      }
+      .b1-the {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: rgba(255,255,255,0.9);
+        letter-spacing: 0.25em;
+        text-transform: uppercase;
+        display: block;
+        margin-bottom: 2px;
+      }
+      .b1-black {
+        font-size: 1.95rem;
+        font-weight: 900;
+        color: #f0a830;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        line-height: 0.95;
+        display: block;
+        text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      }
+      .b1-universe {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: rgba(255,255,255,0.9);
+        letter-spacing: 0.25em;
+        text-transform: uppercase;
+        display: block;
+        margin-top: 2px;
+      }
+      .b1-author {
+        font-size: 0.42rem;
+        letter-spacing: 0.2em;
+        color: rgba(255,255,255,0.45);
+        text-transform: uppercase;
+        text-align: center;
+        margin-top: 10px;
+      }
+
+      /* ── Book 2: Don't Go Here (back, right-leaning, partial) ── */
+      .book-2 {
+        width: 185px;
+        height: 278px;
+        bottom: 55px;
+        left: 50%;
+        transform: translateX(12%) rotate(7deg);
+        z-index: 1;
+        box-shadow:
+          6px 10px 30px rgba(0,0,0,0.22),
+          2px 4px 10px rgba(0,0,0,0.15);
+        /* clip to simulate it being partially hidden behind book 1 */
+      }
+      .book-2-bg {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(160deg, #dce8f0 0%, #c8d8e8 40%, #b8cad8 100%);
+      }
+      .book-2-bg::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(ellipse 80px 120px at 60% 55%, rgba(60, 80, 100, 0.18) 0%, transparent 70%),
+          linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, transparent 40%, rgba(0,0,0,0.25) 100%);
+      }
+      /* Silhouette figure on book 2 */
+      .book-2-figure {
+        position: absolute;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-20%);
+        width: 50px;
+        height: 100px;
+        z-index: 2;
+        opacity: 0.55;
+      }
+      .book-2-content {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        padding: 18px 14px 14px;
+      }
+      .b2-title {
+        text-align: right;
+      }
+      .b2-line1,
+      .b2-line2,
+      .b2-line3 {
+        font-size: 2.6rem;
+        font-weight: 900;
+        color: rgba(15,25,40,0.85);
+        letter-spacing: -0.02em;
+        line-height: 0.92;
+        text-transform: uppercase;
+        display: block;
+      }
+      .b2-author {
+        font-size: 0.48rem;
+        letter-spacing: 0.18em;
+        color: rgba(30,50,70,0.55);
+        text-transform: uppercase;
+        text-align: right;
+        margin-top: auto;
+      }
+
+      /* Hooded figure SVG */
+      .figure-svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      /* ── Modal feedback states ── */
+      .modal-error {
+        display: none;
+        background: rgba(255, 59, 48, 0.14);
+        border: 1px solid rgba(255, 59, 48, 0.32);
+        border-radius: 8px;
+        padding: 0.52rem 0.75rem;
+        font-size: 0.8rem;
+        color: rgba(255, 190, 185, 0.95);
+        position: relative;
+        z-index: 1;
+      }
+      .modal-error.show { display: block; }
+      .modal-submit.loading {
+        opacity: 0.72;
+        pointer-events: none;
+      }
+      .modal-submit.loading::after {
+        content: '';
+        display: inline-block;
+        width: 13px;
+        height: 13px;
+        border: 2px solid rgba(255,255,255,0.35);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.65s linear infinite;
+        margin-left: 8px;
+        vertical-align: middle;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* ── Hamburger button (hidden on desktop) ── */
+      .hamburger {
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        gap: 5px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        margin-left: auto;
+      }
+      .hamburger span {
+        display: block;
+        width: 22px;
+        height: 2px;
+        background: #111;
+        border-radius: 2px;
+        transition: transform 0.25s, opacity 0.2s;
+      }
+      .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+      .hamburger.open span:nth-child(2) { opacity: 0; }
+      .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+      /* Mobile drawer */
+      .mobile-menu {
+        display: none;
+        flex-direction: column;
+        position: absolute;
+        top: 62px;
+        left: 0;
+        right: 0;
+        background: #fff;
+        border-bottom: 1px solid #f1f1f1;
+        padding: 0.75rem 1.5rem 1.25rem;
+        z-index: 99;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.07);
+      }
+      .mobile-menu.open { display: flex; }
+      .mobile-menu a {
+        font-size: 0.925rem;
+        font-weight: 500;
+        color: #222;
+        text-decoration: none;
+        padding: 0.65rem 0;
+        border-bottom: 1px solid #f4f4f4;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .mobile-menu a:last-of-type { border-bottom: none; }
+      .mobile-menu a:hover { color: #3d6cfa; }
+      .mobile-search {
+        display: flex;
+        align-items: center;
+        background: #f5f5f5;
+        border-radius: 999px;
+        padding: 0.45rem 0.9rem;
+        gap: 0.4rem;
+        margin-bottom: 0.5rem;
+      }
+      .mobile-search input {
+        border: none;
+        background: transparent;
+        font-size: 0.85rem;
+        color: #666;
+        outline: none;
+        width: 100%;
+        font-family: inherit;
+      }
+      .mobile-search input::placeholder { color: #aaa; }
+      .mobile-search button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #aaa;
+        display: flex;
+        align-items: center;
+        padding: 0;
+      }
+      .mobile-auth-row {
+        display: flex;
+        gap: 0.6rem;
+        margin-top: 0.75rem;
+      }
+      .mobile-auth-row button {
+        flex: 1;
+        padding: 0.62rem;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        letter-spacing: -0.01em;
+        border: none;
+      }
+      .mobile-btn-signup {
+        background: transparent;
+        color: #3d6cfa;
+        border: 1.5px solid #3d6cfa !important;
+      }
+      .mobile-btn-login {
+        background: #3d6cfa;
+        color: #fff;
+      }
+
+      /* ── Tablet (≤ 1024px) ── */
+      @media (max-width: 1024px) {
+        .search-bar { width: 160px; }
+        .headline { font-size: clamp(2rem, 4vw, 3rem); }
+      }
+
+      /* ── Mobile (≤ 768px) ── */
+      @media (max-width: 768px) {
+        /* Hide desktop nav items */
+        .nav-links,
+        .search-bar,
+        .btn-login,
+        .btn-signup { display: none; }
+
+        /* Show hamburger */
+        .hamburger { display: flex; }
+
+        /* Hero */
+        .hero { min-height: auto; padding: 2rem 0; }
+        .hero-container {
+          grid-template-columns: 1fr;
+          text-align: center;
+          padding: 2rem 1.25rem;
+          gap: 2.5rem;
+        }
+        .hero-text { padding-right: 0; }
+        .partners { justify-content: center; }
+
+        /* Books */
+        .hero-books { height: 300px; }
+        .book-1 {
+          width: 150px;
+          height: 220px;
+          transform: translateX(-38%) rotate(-6deg);
+        }
+        .book-2 {
+          width: 130px;
+          height: 195px;
+          transform: translateX(14%) rotate(7deg);
+        }
+        .b2-line1, .b2-line2, .b2-line3 { font-size: 1.9rem; }
+        .b1-black { font-size: 1.5rem; }
+      }
+
+      /* ── Very small (≤ 400px) ── */
+      @media (max-width: 400px) {
+        .hero-books { height: 250px; }
+        .book-1 {
+          width: 120px;
+          height: 178px;
+          transform: translateX(-40%) rotate(-6deg);
+        }
+        .book-2 {
+          width: 105px;
+          height: 158px;
+          transform: translateX(16%) rotate(7deg);
+        }
+        .b2-line1, .b2-line2, .b2-line3 { font-size: 1.5rem; }
+        .b1-black { font-size: 1.2rem; }
+        .b1-the, .b1-universe { font-size: 0.65rem; }
+        .partners { gap: 0.8rem; }
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- ═══════════════ NAVBAR ═══════════════ -->
+    <nav class="navbar">
+      <div class="navbar-inner">
+
+        <!-- Brand -->
+        <a class="brand" href="#">
+          <div class="brand-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <span class="brand-name">Bokify</span>
+        </a>
+
+        <!-- Nav links -->
+        <ul class="nav-links">
+          <li>
+            <a href="#">
+              Home
+              <svg class="chevron" viewBox="0 0 12 12" fill="none">
+                <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </a>
+          </li>
+          <li><a href="#">Shop</a></li>
+          <li><a href="#">Blog</a></li>
+          <li>
+            <a href="#">
+              Page
+              <svg class="chevron" viewBox="0 0 12 12" fill="none">
+                <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </a>
+          </li>
+          <li><a href="#">Contact</a></li>
+        </ul>
+
+        <!-- Right: search + icons (desktop) -->
+        <div class="nav-right">
+          <div class="search-bar">
+            <input id="search-input" type="text" placeholder="Search" />
+            <button id="search-btn" aria-label="Search">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </button>
+          </div>
+          <button class="btn-signup" id="btn-signup-desk">Sign up</button>
+          <button class="btn-login" id="btn-login-desk">Login</button>
+          <button class="btn-logout" id="btn-logout-desk" style="display:none">Log out</button>
+        </div>
+
+        <!-- Hamburger (mobile only) -->
+        <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+
+      </div>
+    </nav>
+
+    <!-- Mobile drawer -->
+    <div class="mobile-menu" id="mobile-menu">
+      <div class="mobile-search">
+        <input type="text" placeholder="Search books…" />
+        <button aria-label="Search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </button>
+      </div>
+      <a href="#">Home</a>
+      <a href="#">Shop</a>
+      <a href="#">Blog</a>
+      <a href="#">Page</a>
+      <a href="#">Contact</a>
+      <div class="mobile-auth-row">
+        <button class="mobile-btn-signup" id="btn-signup-mob">Sign up</button>
+        <button class="mobile-btn-login" id="btn-login-mob">Login</button>
+        <button class="mobile-btn-signup" id="btn-logout-mob" style="display:none">Log out</button>
+      </div>
+    </div>
+
+    <!-- ═══════════════ HERO ═══════════════ -->
+    <section class="hero">
+      <div class="hero-container">
+
+        <!-- Left: Text -->
+        <div class="hero-text">
+          <p class="eyebrow">By bestseller author</p>
+          <h1 class="headline">Meet your next<br>favorite book</h1>
+          <button class="btn-buy" id="cta-btn">Buy our book</button>
+
+          <!-- Partners -->
+          <div class="partners">
+            <!-- Audible -->
+            <div class="partner">
+              <svg width="22" height="22" viewBox="0 0 100 100" fill="none">
+                <circle cx="50" cy="50" r="46" fill="#ff9900" opacity="0.12"/>
+                <!-- Audible headphone-wave icon simplified -->
+                <path d="M50 20C32.3 20 18 34.3 18 52s14.3 32 32 32" stroke="#ff9900" stroke-width="7" stroke-linecap="round" fill="none"/>
+                <path d="M50 32c-11 0-20 9-20 20s9 20 20 20" stroke="#ff9900" stroke-width="7" stroke-linecap="round" fill="none"/>
+                <circle cx="50" cy="52" r="7" fill="#ff9900"/>
+              </svg>
+              <div>
+                <div class="partner-name" style="font-size:0.82rem;">audible</div>
+                <div class="partner-sub">an amazon company</div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Amazon -->
+            <div class="partner">
+              <div class="partner-name" style="font-size:0.95rem;letter-spacing:-0.03em;">amazon</div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Google Books -->
+            <div class="partner" style="gap:3px;">
+              <span style="font-size:0.9rem;font-weight:800;color:#4285f4;">G</span>
+              <span style="font-size:0.9rem;font-weight:800;color:#ea4335;">o</span>
+              <span style="font-size:0.9rem;font-weight:800;color:#fbbc04;">o</span>
+              <span style="font-size:0.9rem;font-weight:800;color:#4285f4;">g</span>
+              <span style="font-size:0.9rem;font-weight:800;color:#34a853;">l</span>
+              <span style="font-size:0.9rem;font-weight:800;color:#ea4335;">e</span>
+              <span style="font-size:0.9rem;font-weight:700;color:#1a1a1a;margin-left:4px;">Books</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Books -->
+        <div class="hero-books">
+
+          <!-- Book 2 (back) – Don't Go Here -->
+          <div class="book book-2">
+            <div class="book-2-bg"></div>
+
+            <!-- Distant figure silhouette -->
+            <svg class="book-2-figure" viewBox="0 0 50 100" fill="none">
+              <!-- misty background atmosphere -->
+              <ellipse cx="25" cy="80" rx="22" ry="8" fill="rgba(60,80,100,0.12)"/>
+              <!-- body silhouette -->
+              <rect x="18" y="40" width="14" height="45" rx="3" fill="rgba(20,35,50,0.45)"/>
+              <!-- head -->
+              <circle cx="25" cy="34" r="7" fill="rgba(20,35,50,0.45)"/>
+              <!-- legs -->
+              <rect x="18" y="75" width="5" height="20" rx="2" fill="rgba(20,35,50,0.4)"/>
+              <rect x="27" y="75" width="5" height="20" rx="2" fill="rgba(20,35,50,0.4)"/>
+              <!-- arms -->
+              <rect x="9" y="44" width="10" height="4" rx="2" fill="rgba(20,35,50,0.35)"/>
+              <rect x="31" y="44" width="10" height="4" rx="2" fill="rgba(20,35,50,0.35)"/>
+            </svg>
+
+            <div class="book-2-content">
+              <div class="b2-title">
+                <span class="b2-line1">DON'T</span>
+                <span class="b2-line2">GO</span>
+                <span class="b2-line3">HERE</span>
+              </div>
+              <div class="b2-author">A Silva</div>
+            </div>
+          </div>
+
+          <!-- Book 1 (front) – The Black Universe -->
+          <div class="book book-1">
+            <div class="book-1-bg"></div>
+
+            <!-- Hooded figure -->
+            <svg class="book-1-figure" viewBox="0 0 100 160" fill="none">
+              <!-- atmospheric glow beneath -->
+              <ellipse cx="50" cy="148" rx="38" ry="8" fill="rgba(200,120,30,0.25)"/>
+              <!-- cloak / robe body -->
+              <path d="M50 30 C28 42 18 70 16 120 C20 128 35 138 50 140 C65 138 80 128 84 120 C82 70 72 42 50 30Z" fill="#1a1f14"/>
+              <path d="M50 30 C38 38 30 55 26 85 L50 140 L74 85 C70 55 62 38 50 30Z" fill="#151a0f"/>
+              <!-- hood -->
+              <path d="M50 8 C34 8 22 20 22 36 C22 48 30 38 40 34 C44 46 50 52 50 52 C50 52 56 46 60 34 C70 38 78 48 78 36 C78 20 66 8 50 8Z" fill="#1e2a1e"/>
+              <!-- hood shadow/depth -->
+              <path d="M50 10 C38 10 28 20 28 35 C32 30 42 28 50 32 C58 28 68 30 72 35 C72 20 62 10 50 10Z" fill="#111a11"/>
+              <!-- face shadow (darkness inside hood) -->
+              <ellipse cx="50" cy="32" rx="14" ry="12" fill="#0a0f0a" opacity="0.75"/>
+              <!-- faint eye glints -->
+              <circle cx="44" cy="30" r="1.5" fill="rgba(200,140,50,0.5)"/>
+              <circle cx="56" cy="30" r="1.5" fill="rgba(200,140,50,0.5)"/>
+              <!-- cloak folds -->
+              <path d="M32 80 C30 95 28 110 28 125" stroke="rgba(255,255,255,0.05)" stroke-width="2" stroke-linecap="round"/>
+              <path d="M68 80 C70 95 72 110 72 125" stroke="rgba(255,255,255,0.05)" stroke-width="2" stroke-linecap="round"/>
+              <!-- subtle ground mist -->
+              <ellipse cx="50" cy="140" rx="30" ry="5" fill="rgba(150,90,20,0.18)"/>
+            </svg>
+
+            <div class="book-1-content">
+              <p class="b1-series">A bestselling fantasy series</p>
+              <div class="b1-title">
+                <span class="b1-the">THE</span>
+                <span class="b1-black">BLACK</span>
+                <span class="b1-universe">UNIVERSE</span>
+              </div>
+              <p class="b1-author">Greta Mae Evans</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ MODAL ═══════════════ -->
+    <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-label="Sign up">
+      <div class="modal-card" id="modal-card">
+        <button class="modal-close" id="modal-close" aria-label="Close">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </button>
+
+        <!-- Logo -->
+        <div class="modal-logo">
+          <div class="modal-logo-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <span class="modal-logo-name">Bokify</span>
+        </div>
+
+        <!-- Tabs -->
+        <div class="modal-tabs">
+          <div class="modal-tab active" id="tab-signup">Sign up</div>
+          <div class="modal-tab" id="tab-login">Login</div>
+        </div>
+
+        <!-- Sign Up Panel -->
+        <div id="panel-signup">
+          <div class="modal-title">Create your account</div>
+          <div class="modal-sub">Start discovering great books today.</div>
+          <form class="modal-form" id="form-signup">
+            <div class="modal-field">
+              <label for="su-name">Full name</label>
+              <input id="su-name" type="text" placeholder="Jane Doe" autocomplete="name" required />
+            </div>
+            <div class="modal-field">
+              <label for="su-email">Email</label>
+              <input id="su-email" type="email" placeholder="jane@example.com" autocomplete="email" required />
+            </div>
+            <div class="modal-field">
+              <label for="su-pass">Password</label>
+              <input id="su-pass" type="password" placeholder="Min. 8 characters" autocomplete="new-password" required />
+            </div>
+            <div class="modal-error" id="su-error"></div>
+            <button type="submit" class="modal-submit" id="su-btn">Create account</button>
+          </form>
+          <div class="modal-footer" style="margin-top:1.1rem;">
+            Already have an account? <a id="switch-to-login">Log in</a>
+          </div>
+        </div>
+
+        <!-- Confirm Email Panel -->
+        <div id="panel-confirm" style="display:none; text-align:center; padding: 0.5rem 0 0.75rem;">
+          <div style="width:52px;height:52px;background:rgba(61,108,250,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3d6cfa" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+          </div>
+          <div class="modal-title" style="margin-bottom:0.4rem;">Check your email</div>
+          <div class="modal-sub" style="margin-bottom:1.5rem;">We sent a confirmation link to your inbox. Click it to activate your account.</div>
+          <button class="modal-submit" onclick="document.getElementById('modal-overlay').classList.remove('open');document.body.style.overflow='';">Got it</button>
+        </div>
+
+        <!-- Login Panel -->
+        <div id="panel-login" style="display:none">
+          <div class="modal-title">Welcome back</div>
+          <div class="modal-sub">Log in to your Bokify account.</div>
+          <form class="modal-form" id="form-login">
+            <div class="modal-field">
+              <label for="li-email">Email</label>
+              <input id="li-email" type="email" placeholder="jane@example.com" autocomplete="email" required />
+            </div>
+            <div class="modal-field">
+              <label for="li-pass">Password</label>
+              <input id="li-pass" type="password" placeholder="Your password" autocomplete="current-password" required />
+            </div>
+            <div class="modal-error" id="li-error"></div>
+            <button type="submit" class="modal-submit" id="li-btn">Log in</button>
+          </form>
+          <div class="modal-footer" style="margin-top:1.1rem;">
+            Don't have an account? <a id="switch-to-signup">Sign up</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </body>
+</html>

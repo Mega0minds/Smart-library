@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+body {
+  background: #f8fafc;
+}
+
+.btn-brand {
+  @apply bg-[#2563eb] text-white px-6 py-3 rounded-2xl shadow-soft hover:bg-[#1d4ed8] transition;
+}

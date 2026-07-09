@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard – Bokify</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <script type="module" src="/src/dashboard.ts"></script>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: 'Inter', system-ui, sans-serif;
+        background: #f7f8fc;
+        color: #111;
+        -webkit-font-smoothing: antialiased;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      /* ── LAYOUT ── */
+      .app-layout { display: flex; height: 100vh; }
+
+      /* ── SIDEBAR ── */
+      .sidebar {
+        width: 230px;
+        flex-shrink: 0;
+        background: #fff;
+        border-right: 1px solid #ebebeb;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+      }
+
+      .sidebar-brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 1.1rem 1.25rem;
+        border-bottom: 1px solid #f4f4f4;
+        text-decoration: none;
+        flex-shrink: 0;
+      }
+      .brand-icon {
+        width: 28px; height: 28px;
+        background: #3d6cfa;
+        border-radius: 7px;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .brand-name { font-size: 0.95rem; font-weight: 700; color: #111; }
+
+      .sidebar-nav { padding: 0.6rem 0.75rem; flex: 1; }
+
+      .nav-section-label {
+        font-size: 0.68rem;
+        font-weight: 600;
+        color: #bbb;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 0.6rem 0.5rem 0.3rem;
+      }
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 0.46rem 0.65rem;
+        border-radius: 7px;
+        font-size: 0.855rem;
+        font-weight: 500;
+        color: #666;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.14s, color 0.14s;
+        border: none;
+        background: none;
+        width: 100%;
+        text-align: left;
+        font-family: inherit;
+      }
+      .nav-item:hover { background: #f5f6ff; color: #3d6cfa; }
+      .nav-item.active { background: #eef2ff; color: #3d6cfa; font-weight: 600; }
+      .nav-item svg { flex-shrink: 0; }
+
+      /* Reading checklist */
+      .checklist-wrap {
+        padding: 0 0.75rem 0.75rem;
+        border-top: 1px solid #f4f4f4;
+        margin-top: 0.5rem;
+      }
+      .checklist-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.68rem;
+        font-weight: 600;
+        color: #bbb;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 0.75rem 0.5rem 0.4rem;
+      }
+      .checklist-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0.34rem 0.5rem;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      .checklist-item:hover { background: #f9f9fb; }
+      .checklist-item input[type="checkbox"] {
+        width: 14px; height: 14px;
+        accent-color: #3d6cfa;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .checklist-item label {
+        font-size: 0.8rem;
+        color: #555;
+        cursor: pointer;
+        line-height: 1.4;
+      }
+      .checklist-item.checked label { text-decoration: line-through; color: #c0c0c0; }
+
+      /* User footer */
+      .sidebar-footer {
+        border-top: 1px solid #f4f4f4;
+        padding: 0.65rem 0.75rem;
+        flex-shrink: 0;
+      }
+      .user-row {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 0.4rem 0.5rem;
+        border-radius: 8px;
+      }
+      .user-avatar {
+        width: 30px; height: 30px;
+        border-radius: 50%;
+        background: #eef2ff;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #3d6cfa;
+        flex-shrink: 0;
+      }
+      .user-info { flex: 1; min-width: 0; }
+      .user-name {
+        font-size: 0.8rem; font-weight: 600; color: #111;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .user-email {
+        font-size: 0.68rem; color: #aaa;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .btn-logout-icon {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #ccc;
+        padding: 4px;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        transition: color 0.14s, background 0.14s;
+      }
+      .btn-logout-icon:hover { color: #555; background: #f0f0f0; }
+
+      /* ── MAIN ── */
+      .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+      .main-topbar {
+        background: #fff;
+        border-bottom: 1px solid #ebebeb;
+        padding: 0.7rem 1.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+      }
+      .topbar-title { font-size: 0.95rem; font-weight: 600; color: #111; }
+      .topbar-right { display: flex; align-items: center; gap: 0.6rem; }
+      .search-wrap {
+        display: flex;
+        align-items: center;
+        background: #f5f5f5;
+        border-radius: 999px;
+        padding: 0.32rem 0.85rem;
+        gap: 0.4rem;
+      }
+      .search-wrap input {
+        border: none; background: transparent;
+        font-size: 0.8rem; color: #555; outline: none;
+        width: 150px; font-family: inherit;
+      }
+      .search-wrap input::placeholder { color: #aaa; }
+      .btn-add {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: #3d6cfa;
+        color: #fff;
+        border: none;
+        border-radius: 7px;
+        padding: 0.4rem 0.85rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        transition: background 0.14s;
+      }
+      .btn-add:hover { background: #2a56e8; }
+
+      .main-body { flex: 1; overflow-y: auto; padding: 1.75rem 2rem; }
+
+      /* Section header */
+      .section-head { margin-bottom: 1.2rem; }
+      .section-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #0c0c0c;
+        letter-spacing: -0.02em;
+        margin-bottom: 0.15rem;
+      }
+      .section-sub { font-size: 0.78rem; color: #aaa; margin-bottom: 1rem; }
+
+      /* Tabs */
+      .tabs {
+        display: flex;
+        border-bottom: 1px solid #ebebeb;
+        margin-bottom: 1.4rem;
+        gap: 0;
+      }
+      .tab-btn {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 0.5rem 0.95rem;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: #999;
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        font-family: inherit;
+        transition: color 0.14s;
+        margin-bottom: -1px;
+        white-space: nowrap;
+      }
+      .tab-btn:hover { color: #3d6cfa; }
+      .tab-btn.active { color: #3d6cfa; border-bottom-color: #3d6cfa; font-weight: 600; }
+      .tab-count {
+        background: #eef2ff;
+        color: #3d6cfa;
+        font-size: 0.66rem;
+        font-weight: 600;
+        border-radius: 999px;
+        padding: 1px 5px;
+      }
+      .tab-btn.active .tab-count { background: #3d6cfa; color: #fff; }
+
+      /* Book Grid */
+      .book-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+        gap: 1rem;
+      }
+
+      .book-card {
+        background: #fff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+        transition: transform 0.18s, box-shadow 0.18s;
+        cursor: pointer;
+      }
+      .book-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      }
+
+      .book-cover {
+        width: 100%;
+        height: 185px;
+        position: relative;
+        overflow: hidden;
+      }
+      .cover-bg {
+        width: 100%; height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        position: relative;
+      }
+      /* Spine effect */
+      .cover-bg::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0;
+        width: 14px; height: 100%;
+        background: linear-gradient(to right, rgba(0,0,0,0.3), rgba(0,0,0,0.06) 70%, transparent);
+        z-index: 1;
+      }
+      .cover-title {
+        font-size: 0.7rem;
+        font-weight: 800;
+        color: rgba(255,255,255,0.92);
+        text-align: center;
+        line-height: 1.35;
+        letter-spacing: 0.01em;
+        text-transform: uppercase;
+        position: relative;
+        z-index: 2;
+      }
+      .cover-title.dark { color: rgba(30,20,10,0.82); }
+      .cover-author-sm {
+        font-size: 0.58rem;
+        color: rgba(255,255,255,0.5);
+        margin-top: 6px;
+        text-align: center;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        position: relative;
+        z-index: 2;
+      }
+      .cover-author-sm.dark { color: rgba(30,20,10,0.45); }
+
+      .book-info { padding: 0.8rem; }
+      .book-title {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #111;
+        margin-bottom: 0.42rem;
+        line-height: 1.3;
+      }
+      .book-genres {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-bottom: 0.55rem;
+      }
+      .badge {
+        font-size: 0.66rem;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 999px;
+      }
+      .book-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .author-chip {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.72rem;
+        color: #777;
+        font-weight: 500;
+      }
+      .author-initial {
+        width: 17px; height: 17px;
+        border-radius: 50%;
+        background: #eef2ff;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.58rem;
+        font-weight: 700;
+        color: #3d6cfa;
+        flex-shrink: 0;
+      }
+      .card-action {
+        font-size: 0.68rem;
+        font-weight: 600;
+        color: #ccc;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        font-family: inherit;
+        transition: color 0.14s;
+      }
+      .card-action:hover { color: #3d6cfa; }
+
+      /* Loading */
+      #loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background: #f7f8fc;
+      }
+      .spinner {
+        width: 30px; height: 30px;
+        border: 2.5px solid #eef2ff;
+        border-top-color: #3d6cfa;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* ── Mobile (≤ 768px) ── */
+      @media (max-width: 768px) {
+        .sidebar { display: none; }
+        .main-body { padding: 1.25rem; }
+        .book-grid { grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 0.75rem; }
+        .book-cover { height: 155px; }
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- ── APP (hidden until auth verified) ── -->
+    <div class="app-layout" id="app" style="display:none">
+
+      <!-- ══ SIDEBAR ══ -->
+      <aside class="sidebar">
+
+        <a class="sidebar-brand" href="/">
+          <div class="brand-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <span class="brand-name">Bokify</span>
+        </a>
+
+        <nav class="sidebar-nav">
+          <div class="nav-section-label">Library</div>
+
+          <a class="nav-item active" href="/dashboard.html">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            </svg>
+            Dashboard
+          </a>
+
+          <a class="nav-item" href="/authors.html">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            Authors
+          </a>
+
+          <a class="nav-item" href="/highlights.html">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            Highlights
+          </a>
+
+          <a class="nav-item" href="/wishlist.html">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            Wishlist
+          </a>
+
+          <a class="nav-item" href="/genres.html">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            </svg>
+            Genres
+          </a>
+        </nav>
+
+        <!-- Reading Checklist -->
+        <div class="checklist-wrap">
+          <div class="checklist-label">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Reading Check list
+          </div>
+
+          <div class="checklist-item"><input type="checkbox" id="c1"><label for="c1">Be present</label></div>
+          <div class="checklist-item"><input type="checkbox" id="c2"><label for="c2">Read 10 pages per day</label></div>
+          <div class="checklist-item"><input type="checkbox" id="c3"><label for="c3">Read before bed</label></div>
+          <div class="checklist-item"><input type="checkbox" id="c4"><label for="c4">Take notes when reading</label></div>
+          <div class="checklist-item"><input type="checkbox" id="c5"><label for="c5">Take regular breaks</label></div>
+        </div>
+
+        <!-- User footer -->
+        <div class="sidebar-footer">
+          <div class="user-row">
+            <div class="user-avatar" id="user-avatar">?</div>
+            <div class="user-info">
+              <div class="user-name" id="user-name">Loading…</div>
+              <div class="user-email" id="user-email"></div>
+            </div>
+            <button class="btn-logout-icon" id="btn-logout" title="Log out">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- ══ MAIN ══ -->
+      <main class="main">
+
+        <div class="main-topbar">
+          <span class="topbar-title">My Library</span>
+          <div class="topbar-right">
+            <div class="search-wrap">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input type="text" placeholder="Search books…" />
+            </div>
+            <button class="btn-add">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Add book
+            </button>
+          </div>
+        </div>
+
+        <div class="main-body">
+
+          <div class="section-head">
+            <div class="section-title">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3d6cfa" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+              </svg>
+              Books
+            </div>
+            <div class="section-sub">Track your reading journey ↓</div>
+          </div>
+
+          <!-- Tabs -->
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="pinned">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="17" x2="12" y2="22"/>
+                <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
+              </svg>
+              Pinned <span class="tab-count">6</span>
+            </button>
+            <button class="tab-btn" data-tab="reading">Reading <span class="tab-count">2</span></button>
+            <button class="tab-btn" data-tab="to-read">To read <span class="tab-count">4</span></button>
+            <button class="tab-btn" data-tab="read">Read <span class="tab-count">8</span></button>
+            <button class="tab-btn" data-tab="wishlist">Wishlist <span class="tab-count">3</span></button>
+            <button class="tab-btn" data-tab="all">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+              </svg>
+              All
+            </button>
+          </div>
+
+          <!-- Book grid -->
+          <div class="book-grid" id="book-grid">
+
+            <!-- Book 1 -->
+            <div class="book-card"
+              data-title="The 4-Hour Work Week"
+              data-author="Tim Ferriss"
+              data-initials="TF"
+              data-cover="linear-gradient(160deg,#1b2a1b 0%,#2d4a1e 35%,#3d2d0e 65%,#5a3e10 100%)"
+              data-dark="false"
+              data-genres="Self-improvement"
+              data-status="Pinned"
+              data-desc="A step-by-step guide to living more and working less. Ferriss reveals how he went from 80-hour weeks to just 4, outsourcing his life while traveling the world.">
+              <div class="book-cover">
+                <div class="cover-bg" style="background:linear-gradient(160deg,#1b2a1b 0%,#2d4a1e 35%,#3d2d0e 65%,#5a3e10 100%)">
+                  <span class="cover-title">The 4-Hour Work Week</span>
+                  <span class="cover-author-sm">Timothy Ferriss</span>
+                </div>
+              </div>
+              <div class="book-info">
+                <div class="book-title">The 4-Hour Work Week</div>
+                <div class="book-genres">
+                  <span class="badge" style="background:#e8f5e9;color:#2e7d32;">Self-improvement</span>
+                </div>
+                <div class="book-meta">
+                  <div class="author-chip">
+                    <div class="author-initial">TF</div>
+                    Tim Ferriss
+                  </div>
+                  <button class="card-action">Unpin</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Book 2 -->
+            <div class="book-card"
+              data-title="Atomic Habits"
+              data-author="James Clear"
+              data-initials="JC"
+              data-cover="linear-gradient(160deg,#1a1a2e 0%,#16213e 40%,#0f3460 70%,#533483 100%)"
+              data-dark="false"
+              data-genres="Self-improvement"
+              data-status="Pinned"
+              data-desc="An easy and proven way to build good habits and break bad ones. Clear's framework shows how tiny 1% changes compound into remarkable results over time.">
+              <div class="book-cover">
+                <div class="cover-bg" style="background:linear-gradient(160deg,#1a1a2e 0%,#16213e 40%,#0f3460 70%,#533483 100%)">
+                  <span class="cover-title">Atomic Habits</span>
+                  <span class="cover-author-sm">James Clear</span>
+                </div>
+              </div>
+              <div class="book-info">
+                <div class="book-title">Atomic Habits</div>
+                <div class="book-genres">
+                  <span class="badge" style="background:#e8f5e9;color:#2e7d32;">Self-improvement</span>
+                </div>
+                <div class="book-meta">
+                  <div class="author-chip">
+                    <div class="author-initial">JC</div>
+                    James Clear
+                  </div>
+                  <button class="card-action">Unpin</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Book 3 -->
+            <div class="book-card"
+              data-title="Normal People"
+              data-author="Sally Rooney"
+              data-initials="SR"
+              data-cover="linear-gradient(160deg,#f5ede0 0%,#e8d4b0 40%,#d4b88a 70%,#c8a870 100%)"
+              data-dark="true"
+              data-genres="Novel,Literary fiction"
+              data-status="Pinned"
+              data-desc="A story about the complex relationship between two Irish teenagers, Connell and Marianne, exploring love, class, and identity from secondary school to Trinity College Dublin.">
+              <div class="book-cover">
+                <div class="cover-bg" style="background:linear-gradient(160deg,#f5ede0 0%,#e8d4b0 40%,#d4b88a 70%,#c8a870 100%)">
+                  <span class="cover-title dark">Normal People</span>
+                  <span class="cover-author-sm dark">Sally Rooney</span>
+                </div>
+              </div>
+              <div class="book-info">
+                <div class="book-title">Normal People</div>
+                <div class="book-genres">
+                  <span class="badge" style="background:#f3e5f5;color:#6a1b9a;">Novel</span>
+                  <span class="badge" style="background:#e8eaf6;color:#283593;">Literary fiction</span>
+                </div>
+                <div class="book-meta">
+                  <div class="author-chip">
+                    <div class="author-initial">SR</div>
+                    Sally Rooney
+                  </div>
+                  <button class="card-action">Unpin</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Book 4 -->
+            <div class="book-card"
+              data-title="The Alchemist"
+              data-author="Paulo Coelho"
+              data-initials="PC"
+              data-cover="linear-gradient(160deg,#b34700 0%,#d4620a 35%,#e8820a 60%,#f0a030 85%,#f5c040 100%)"
+              data-dark="false"
+              data-genres="Adventure fiction"
+              data-status="Pinned"
+              data-desc="A young shepherd named Santiago dreams of finding a worldly treasure. His journey to the Egyptian pyramids reveals that the secret of happiness lies in seeing all the world's wonders every day.">
+              <div class="book-cover">
+                <div class="cover-bg" style="background:linear-gradient(160deg,#b34700 0%,#d4620a 35%,#e8820a 60%,#f0a030 85%,#f5c040 100%)">
+                  <span class="cover-title">The Alchemist</span>
+                  <span class="cover-author-sm">Paulo Coelho</span>
+                </div>
+              </div>
+              <div class="book-info">
+                <div class="book-title">The Alchemist</div>
+                <div class="book-genres">
+                  <span class="badge" style="background:#fff3e0;color:#e65100;">Adventure fiction</span>
+                </div>
+                <div class="book-meta">
+                  <div class="author-chip">
+                    <div class="author-initial">PC</div>
+                    Paulo Coelho
+                  </div>
+                  <button class="card-action">Unpin</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Book 5 -->
+            <div class="book-card"
+              data-title="The Things We Cannot Say"
+              data-author="Kelly Rimmer"
+              data-initials="KR"
+              data-cover="linear-gradient(160deg,#1a0533 0%,#2d1b4e 40%,#3d2a6a 70%,#4a3580 100%)"
+              data-dark="false"
+              data-genres="Historical fiction"
+              data-status="Pinned"
+              data-desc="A dual-timeline novel about love, sacrifice, and the secrets that bind families. Set across WWII Poland and modern-day America, it explores what we carry forward from the past.">
+              <div class="book-cover">
+                <div class="cover-bg" style="background:linear-gradient(160deg,#1a0533 0%,#2d1b4e 40%,#3d2a6a 70%,#4a3580 100%)">
+                  <span class="cover-title">The Things We Cannot Say</span>
+                  <span class="cover-author-sm">Kelly Rimmer</span>
+                </div>
+              </div>
+              <div class="book-info">
+                <div class="book-title">The Things We Cannot Say</div>
+                <div class="book-genres">
+                  <span class="badge" style="background:#fce4ec;color:#880e4f;">Historical fiction</span>
+                </div>
+                <div class="book-meta">
+                  <div class="author-chip">
+                    <div class="author-initial">KR</div>
+                    Kelly Rimmer
+                  </div>
+                  <button class="card-action">Unpin</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Book 6 -->
+            <div class="book-card"
+              data-title="If I Tell You"
+              data-author="Gregg Olsen"
+              data-initials="GO"
+              data-cover="linear-gradient(160deg,#0d2137 0%,#1a3a52 40%,#1f4e6a 65%,#2a6080 100%)"
+              data-dark="false"
+              data-genres="Thriller"
+              data-status="Pinned"
+              data-desc="A chilling thriller that unravels the dark secrets of a seemingly perfect family in a small Pacific Northwest town, where nothing and nobody is quite as they appear.">
+              <div class="book-cover">
+                <div class="cover-bg" style="background:linear-gradient(160deg,#0d2137 0%,#1a3a52 40%,#1f4e6a 65%,#2a6080 100%)">
+                  <span class="cover-title">If I Tell You</span>
+                  <span class="cover-author-sm">Gregg Olsen</span>
+                </div>
+              </div>
+              <div class="book-info">
+                <div class="book-title">If I Tell You</div>
+                <div class="book-genres">
+                  <span class="badge" style="background:#e3f2fd;color:#1565c0;">Thriller</span>
+                </div>
+                <div class="book-meta">
+                  <div class="author-chip">
+                    <div class="author-initial">GO</div>
+                    Gregg Olsen
+                  </div>
+                  <button class="card-action">Unpin</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </main>
+
+    </div>
+
+    <!-- Loading (shown while verifying session) -->
+    <div id="loading"><div class="spinner"></div></div>
+
+  </body>
+</html>
