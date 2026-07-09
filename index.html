@@ -773,7 +773,7 @@
       .mobile-menu {
         display: none;
         flex-direction: column;
-        position: absolute;
+        position: fixed;
         top: 62px;
         left: 0;
         right: 0;
@@ -857,13 +857,25 @@
         .headline { font-size: clamp(2rem, 4vw, 3rem); }
       }
 
+      /* ── Collapse nav to hamburger at ≤ 900px ── */
+      @media (max-width: 900px) {
+        .nav-links,
+        .search-bar,
+        .btn-login,
+        .btn-signup,
+        .btn-logout { display: none; }
+
+        .hamburger { display: flex; }
+      }
+
       /* ── Mobile (≤ 768px) ── */
       @media (max-width: 768px) {
         /* Hide desktop nav items */
         .nav-links,
         .search-bar,
         .btn-login,
-        .btn-signup { display: none; }
+        .btn-signup,
+        .btn-logout { display: none; }
 
         /* Show hamburger */
         .hamburger { display: flex; }

@@ -1,20 +1,5 @@
 import { supabase } from './supabase';
 
-// ── Hamburger ──
-const hamburger = document.getElementById('hamburger') as HTMLButtonElement;
-const mobileMenu = document.getElementById('mobile-menu') as HTMLDivElement;
-
-hamburger.addEventListener('click', () => {
-  hamburger.classList.toggle('open');
-  mobileMenu.classList.toggle('open');
-});
-mobileMenu.querySelectorAll('a').forEach(link => {
-  link.addEventListener('click', () => {
-    hamburger.classList.remove('open');
-    mobileMenu.classList.remove('open');
-  });
-});
-
 // ── Modal ──
 const overlay     = document.getElementById('modal-overlay') as HTMLDivElement;
 const panelSignup = document.getElementById('panel-signup') as HTMLDivElement;
@@ -26,8 +11,8 @@ function openModal(panel: 'signup' | 'login') {
   overlay.classList.add('open');
   document.body.style.overflow = 'hidden';
   switchPanel(panel);
-  hamburger.classList.remove('open');
-  mobileMenu.classList.remove('open');
+  document.getElementById('hamburger')?.classList.remove('open');
+  document.getElementById('mobile-menu')?.classList.remove('open');
 }
 
 function closeModal() {
