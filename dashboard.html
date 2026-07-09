@@ -405,9 +405,68 @@
       }
       @keyframes spin { to { transform: rotate(360deg); } }
 
+      /* ── Sidebar overlay (mobile) ── */
+      .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.35);
+        z-index: 149;
+        backdrop-filter: blur(2px);
+      }
+      .sidebar-overlay.open { display: block; }
+
+      /* ── Topbar hamburger (hidden on desktop) ── */
+      .topbar-hamburger {
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        gap: 4px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        margin-right: 0.6rem;
+        flex-shrink: 0;
+      }
+      .topbar-hamburger span {
+        display: block;
+        width: 18px;
+        height: 2px;
+        background: #333;
+        border-radius: 2px;
+        transition: transform 0.22s, opacity 0.18s;
+      }
+
       /* ── Mobile (≤ 768px) ── */
       @media (max-width: 768px) {
-        .sidebar { display: none; }
+        /* Sidebar becomes a fixed slide-in drawer */
+        .sidebar {
+          position: fixed;
+          top: 0;
+          left: 0;
+          bottom: 0;
+          z-index: 150;
+          transform: translateX(-100%);
+          transition: transform 0.28s ease;
+          box-shadow: 4px 0 28px rgba(0,0,0,0.13);
+        }
+        .sidebar.open { transform: translateX(0); }
+
+        /* Show hamburger in topbar */
+        .topbar-hamburger { display: flex; }
+
+        /* Hide desktop search in topbar — search is inside the sidebar */
+        .search-wrap { display: none; }
+
+        /* Tabs scroll horizontally instead of wrapping/clipping */
+        .tabs {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        .tabs::-webkit-scrollbar { display: none; }
+
         .main-body { padding: 1.25rem; }
         .book-grid { grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 0.75rem; }
         .book-cover { height: 155px; }
@@ -419,8 +478,11 @@
     <!-- ── APP (hidden until auth verified) ── -->
     <div class="app-layout" id="app" style="display:none">
 
+      <!-- Sidebar backdrop (mobile) -->
+      <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
       <!-- ══ SIDEBAR ══ -->
-      <aside class="sidebar">
+      <aside class="sidebar" id="sidebar">
 
         <a class="sidebar-brand" href="/">
           <div class="brand-icon">
@@ -514,6 +576,9 @@
       <main class="main">
 
         <div class="main-topbar">
+          <button class="topbar-hamburger" id="sidebar-toggle" aria-label="Open menu">
+            <span></span><span></span><span></span>
+          </button>
           <span class="topbar-title">My Library</span>
           <div class="topbar-right">
             <div class="search-wrap">

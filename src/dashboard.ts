@@ -51,6 +51,28 @@ async function init() {
     });
   });
 
+  // Mobile sidebar drawer
+  const sidebar = document.getElementById('sidebar')!;
+  const sidebarOverlay = document.getElementById('sidebar-overlay')!;
+  const sidebarToggle = document.getElementById('sidebar-toggle')!;
+
+  function openSidebar() {
+    sidebar.classList.add('open');
+    sidebarOverlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    sidebarOverlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  sidebarToggle.addEventListener('click', () => {
+    sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+  });
+  sidebarOverlay.addEventListener('click', closeSidebar);
+  sidebar.querySelectorAll('a').forEach(link => link.addEventListener('click', closeSidebar));
+
   supabase.auth.onAuthStateChange((_event, s) => {
     if (!s) window.location.href = '/';
   });
