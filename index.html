@@ -415,6 +415,25 @@
         border-color: rgba(61,108,250,0.7);
         background: rgba(255,255,255,0.14);
       }
+      .pass-wrap { position: relative; width: 100%; }
+      .pass-wrap input { padding-right: 2.6rem; width: 100%; }
+      .pass-toggle {
+        position: absolute;
+        right: 0.7rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: rgba(255,255,255,0.65);
+        display: flex;
+        align-items: center;
+        padding: 4px;
+        transition: color 0.15s;
+        line-height: 0;
+        z-index: 2;
+      }
+      .pass-toggle:hover { color: rgba(255,255,255,1); }
       .modal-submit {
         margin-top: 0.4rem;
         width: 100%;
@@ -783,6 +802,38 @@
         width: 100%;
         height: 100%;
       }
+
+      /* ── Interests chips ── */
+      .interests-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin: 0.75rem 0 1.25rem;
+        position: relative;
+        z-index: 1;
+        max-height: 195px;
+        overflow-y: auto;
+        padding-right: 2px;
+      }
+      .interests-grid::-webkit-scrollbar { width: 3px; }
+      .interests-grid::-webkit-scrollbar-track { background: transparent; }
+      .interests-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+      .interest-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.36rem 0.85rem;
+        border: 1.5px solid rgba(255,255,255,0.18);
+        border-radius: 999px;
+        cursor: pointer;
+        background: rgba(255,255,255,0.07);
+        transition: border-color 0.15s, background 0.15s;
+        user-select: none;
+      }
+      .interest-chip:hover { border-color: rgba(255,255,255,0.38); background: rgba(255,255,255,0.12); }
+      .interest-chip input { display: none; }
+      .interest-chip.selected { border-color: #3d6cfa; background: rgba(61,108,250,0.22); }
+      .interest-chip-label { font-size: 0.78rem; font-weight: 500; color: rgba(255,255,255,0.65); pointer-events: none; }
+      .interest-chip.selected .interest-chip-label { color: #9bbfff; font-weight: 600; }
 
       /* ── Modal feedback states ── */
       .modal-error {
@@ -1262,7 +1313,15 @@
             </div>
             <div class="modal-field">
               <label for="su-pass">Password</label>
-              <input id="su-pass" type="password" placeholder="Min. 8 characters" autocomplete="new-password" required />
+              <div class="pass-wrap">
+                <input id="su-pass" type="password" placeholder="Min. 8 characters" autocomplete="new-password" required />
+                <button type="button" class="pass-toggle" aria-label="Show password" data-target="su-pass">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
             </div>
             <div class="modal-error" id="su-error"></div>
             <button type="submit" class="modal-submit" id="su-btn">Create account</button>
@@ -1296,13 +1355,32 @@
             </div>
             <div class="modal-field">
               <label for="li-pass">Password</label>
-              <input id="li-pass" type="password" placeholder="Your password" autocomplete="current-password" required />
+              <div class="pass-wrap">
+                <input id="li-pass" type="password" placeholder="Your password" autocomplete="current-password" required />
+                <button type="button" class="pass-toggle" aria-label="Show password" data-target="li-pass">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
             </div>
             <div class="modal-error" id="li-error"></div>
             <button type="submit" class="modal-submit" id="li-btn">Log in</button>
           </form>
           <div class="modal-footer" style="margin-top:1.1rem;">
             Don't have an account? <a id="switch-to-signup">Sign up</a>
+          </div>
+        </div>
+
+        <!-- Interests Panel -->
+        <div id="panel-interests" style="display:none">
+          <div class="modal-title" style="margin-bottom:0.25rem;">What do you love to read?</div>
+          <div class="modal-sub">Pick your interests — we'll personalise your library.</div>
+          <div class="interests-grid" id="interests-grid"></div>
+          <button class="modal-submit" id="interests-btn">Let's go &rarr;</button>
+          <div class="modal-footer" style="margin-top:0.85rem;">
+            <a id="skip-interests" style="cursor:pointer;">Skip for now</a>
           </div>
         </div>
 

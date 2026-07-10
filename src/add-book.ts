@@ -2,24 +2,20 @@ import { initPage } from './shared';
 import { supabase } from './supabase';
 
 /*
-  Requires a Supabase table:
+  Supabase setup required:
 
-  create table books (
-    id            uuid default gen_random_uuid() primary key,
-    user_id       uuid references auth.users not null,
-    title         text not null,
-    author        text not null,
-    genres        text[] default '{}',
-    status        text default 'to-read',
-    description   text,
-    cover_gradient text,
-    cover_dark    boolean default false,
-    created_at    timestamptz default now()
-  );
+  -- Add columns to existing books table:
+  alter table books
+    add column if not exists pdf_url          text,
+    add column if not exists cover_image_url  text;
 
-  alter table books enable row level security;
-  create policy "Users manage own books" on books
-    using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  -- Storage buckets (create in Supabase dashboard → Storage):
+  --   book-pdfs   (private, with RLS)
+  --   book-covers (public)
+
+  -- RLS policies for storage (repeat for each bucket):
+  create policy "Users manage own files" on storage.objects
+    for all using (auth.uid()::text = (storage.foldername(name))[1]);
 */
 
 const THEMES = [
@@ -41,6 +37,9 @@ const GENRES = [
 ];
 
 let activeThemeIndex = 0;
+let pdfFile: File | null = null;
+let coverImageFile: File | null = null;
+let coverImageObjectUrl: string | null = null;
 
 async function init() {
   const user = await initPage();
@@ -50,6 +49,8 @@ async function init() {
   buildGenreChips();
   buildThemeSwatches();
   setupLivePreview();
+  setupPdfUpload();
+  setupCoverImageUpload();
   setupForm(user.id);
 }
 
@@ -57,7 +58,11 @@ function setupSidebarToggle() {
   const sidebar  = document.getElementById('sidebar')!;
   const overlay  = document.getElementById('sidebar-overlay')!;
   const toggle   = document.getElementById('sidebar-toggle')!;
-  const close = () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); document.body.style.overflow = ''; };
+  const close = () => {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  };
   toggle.addEventListener('click', () => {
     const open = sidebar.classList.toggle('open');
     overlay.classList.toggle('open', open);
@@ -100,17 +105,20 @@ function buildThemeSwatches() {
       grid.querySelectorAll('.theme-swatch').forEach(s => s.classList.remove('active'));
       swatch.classList.add('active');
       activeThemeIndex = Number(swatch.dataset.index);
-      applyThemeToPreview();
+      if (!coverImageFile) applyThemeToPreview();
     });
   });
 }
 
 function applyThemeToPreview() {
-  const theme = THEMES[activeThemeIndex];
-  const bg    = document.getElementById('cover-preview-bg')!;
-  const title = document.getElementById('cover-preview-title')!;
+  const theme  = THEMES[activeThemeIndex];
+  const bg     = document.getElementById('cover-preview-bg')!;
+  const title  = document.getElementById('cover-preview-title')!;
   const author = document.getElementById('cover-preview-author')!;
   bg.style.background = theme.gradient;
+  bg.style.backgroundImage = '';
+  bg.style.backgroundSize = '';
+  bg.style.backgroundPosition = '';
   title.className  = 'cover-preview-title'  + (theme.dark ? ' dark' : '');
   author.className = 'cover-preview-author' + (theme.dark ? ' dark' : '');
 }
@@ -118,17 +126,94 @@ function applyThemeToPreview() {
 function setupLivePreview() {
   const titleInput  = document.getElementById('f-title')  as HTMLInputElement;
   const authorInput = document.getElementById('f-author') as HTMLInputElement;
-  const previewTitle  = document.getElementById('cover-preview-title')!;
-  const previewAuthor = document.getElementById('cover-preview-author')!;
 
   applyThemeToPreview();
 
   titleInput.addEventListener('input', () => {
-    previewTitle.textContent = titleInput.value.trim() || 'Title';
+    document.getElementById('cover-preview-title')!.textContent = titleInput.value.trim() || 'Title';
   });
   authorInput.addEventListener('input', () => {
-    previewAuthor.textContent = authorInput.value.trim() || 'Author';
+    document.getElementById('cover-preview-author')!.textContent = authorInput.value.trim() || 'Author';
   });
+}
+
+function setupPdfUpload() {
+  const input = document.getElementById('f-pdf') as HTMLInputElement;
+  const drop  = document.getElementById('pdf-drop')!;
+  const label = document.getElementById('pdf-filename')!;
+
+  input.addEventListener('change', () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    pdfFile = file;
+    label.textContent = file.name;
+    drop.classList.add('has-file');
+  });
+
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('dragover'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+  drop.addEventListener('drop', e => {
+    e.preventDefault();
+    drop.classList.remove('dragover');
+    const file = e.dataTransfer?.files[0];
+    if (file && file.type === 'application/pdf') {
+      pdfFile = file;
+      label.textContent = file.name;
+      drop.classList.add('has-file');
+    }
+  });
+}
+
+function setupCoverImageUpload() {
+  const input      = document.getElementById('f-cover-image') as HTMLInputElement;
+  const btn        = document.getElementById('cover-upload-btn')!;
+  const lbl        = document.getElementById('cover-upload-label')!;
+  const removeBtn  = document.getElementById('btn-remove-cover') as HTMLButtonElement;
+  const themeLabel = document.getElementById('theme-label')!;
+  const themeGrid  = document.getElementById('theme-grid')!;
+
+  input.addEventListener('change', () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    coverImageFile = file;
+    if (coverImageObjectUrl) URL.revokeObjectURL(coverImageObjectUrl);
+    coverImageObjectUrl = URL.createObjectURL(file);
+
+    const bg = document.getElementById('cover-preview-bg')!;
+    bg.style.background = 'none';
+    bg.style.backgroundImage = `url(${coverImageObjectUrl})`;
+    bg.style.backgroundSize = 'cover';
+    bg.style.backgroundPosition = 'center';
+
+    lbl.textContent = file.name;
+    btn.classList.add('has-image');
+    removeBtn.style.display = '';
+    themeLabel.style.opacity = '0.4';
+    themeGrid.style.opacity  = '0.4';
+    themeGrid.style.pointerEvents = 'none';
+  });
+
+  removeBtn.addEventListener('click', () => {
+    coverImageFile = null;
+    if (coverImageObjectUrl) { URL.revokeObjectURL(coverImageObjectUrl); coverImageObjectUrl = null; }
+    input.value = '';
+    lbl.textContent = 'Upload cover image';
+    btn.classList.remove('has-image');
+    removeBtn.style.display = 'none';
+    themeLabel.style.opacity = '';
+    themeGrid.style.opacity  = '';
+    themeGrid.style.pointerEvents = '';
+    applyThemeToPreview();
+  });
+}
+
+async function uploadFile(bucket: string, path: string, file: File): Promise<string | null> {
+  const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true });
+  if (error) {
+    console.warn(`Upload to ${bucket} failed:`, error.message);
+    return null;
+  }
+  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
 
 function getSelectedGenres(): string[] {
@@ -158,9 +243,9 @@ function showToast(msg: string) {
 
 function setupForm(userId: string) {
   const form = document.getElementById('add-book-form') as HTMLFormElement;
-  const btn  = document.getElementById('submit-btn')  as HTMLButtonElement;
+  const btn  = document.getElementById('submit-btn') as HTMLButtonElement;
 
-  form.addEventListener('submit', async (e) => {
+  form.addEventListener('submit', async e => {
     e.preventDefault();
     clearError();
 
@@ -177,15 +262,31 @@ function setupForm(userId: string) {
     btn.classList.add('loading');
     btn.textContent = '';
 
+    const stamp = `${userId}/${Date.now()}`;
+
+    let pdfUrl: string | null = null;
+    if (pdfFile) {
+      pdfUrl = await uploadFile('book-pdfs', `${stamp}-${pdfFile.name}`, pdfFile);
+      if (!pdfUrl) showToast('PDF upload failed — book will be saved without it.');
+    }
+
+    let coverImageUrl: string | null = null;
+    if (coverImageFile) {
+      coverImageUrl = await uploadFile('book-covers', `${stamp}-${coverImageFile.name}`, coverImageFile);
+      if (!coverImageUrl) showToast('Cover image upload failed — using gradient theme instead.');
+    }
+
     const { error } = await supabase.from('books').insert({
-      user_id:        userId,
+      user_id:         userId,
       title,
       author,
       genres,
       status,
-      description:    desc || null,
-      cover_gradient: theme.gradient,
-      cover_dark:     theme.dark,
+      description:     desc || null,
+      cover_gradient:  theme.gradient,
+      cover_dark:      theme.dark,
+      pdf_url:         pdfUrl,
+      cover_image_url: coverImageUrl,
     });
 
     btn.classList.remove('loading');
@@ -195,10 +296,7 @@ function setupForm(userId: string) {
       </svg>
       Add to Library`;
 
-    if (error) {
-      showError(error.message);
-      return;
-    }
+    if (error) { showError(error.message); return; }
 
     showToast('Book added to your library!');
     setTimeout(() => { window.location.href = '/dashboard.html'; }, 1200);

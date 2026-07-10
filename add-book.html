@@ -323,6 +323,100 @@
         color: rgba(255,255,255,0.9);
       }
 
+      /* ── File upload ── */
+      .file-drop {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border: 1.5px dashed #ddd;
+        border-radius: 9px;
+        padding: 0.75rem 1rem;
+        background: #fafafa;
+        cursor: pointer;
+        transition: border-color 0.18s, background 0.18s;
+        position: relative;
+      }
+      .file-drop:hover, .file-drop.dragover { border-color: #3d6cfa; background: #f5f7ff; }
+      .file-drop input[type="file"] {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+      }
+      .file-drop-icon {
+        width: 32px; height: 32px;
+        border-radius: 7px;
+        background: #eef2ff;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+      }
+      .file-drop-text { flex: 1; min-width: 0; }
+      .file-drop-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #444;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .file-drop-hint { font-size: 0.7rem; color: #bbb; margin-top: 1px; }
+      .file-drop.has-file { border-color: #3d6cfa; background: #f5f7ff; }
+      .file-drop.has-file .file-drop-label { color: #3d6cfa; }
+
+      /* Cover image upload strip */
+      .cover-upload-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 0.9rem;
+      }
+      .cover-upload-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 0.48rem 0.85rem;
+        border: 1.5px dashed #ddd;
+        border-radius: 8px;
+        background: #fafafa;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #888;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s, color 0.15s;
+        position: relative;
+        overflow: hidden;
+      }
+      .cover-upload-btn input[type="file"] {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+      }
+      .cover-upload-btn:hover { border-color: #3d6cfa; background: #f5f7ff; color: #3d6cfa; }
+      .cover-upload-btn.has-image { border-color: #3d6cfa; background: #eef2ff; color: #3d6cfa; border-style: solid; }
+      .btn-remove-cover {
+        display: none;
+        background: none;
+        border: 1.5px solid #eee;
+        border-radius: 7px;
+        padding: 0.42rem 0.65rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #e53935;
+        cursor: pointer;
+        font-family: inherit;
+        transition: background 0.14s, border-color 0.14s;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .btn-remove-cover:hover { background: #fff5f5; border-color: #ffcdd2; }
+
       /* Success toast */
       .toast {
         position: fixed;
@@ -486,11 +580,11 @@
                 <div class="form-row">
                   <label for="f-status">Reading status</label>
                   <select class="form-select" id="f-status">
-                    <option value="to-read">To Read</option>
-                    <option value="reading">Currently Reading</option>
-                    <option value="read">Read</option>
-                    <option value="pinned">Pinned</option>
-                    <option value="wishlist">Wishlist</option>
+                    <option value="To read">To Read</option>
+                    <option value="Reading">Currently Reading</option>
+                    <option value="Read">Read</option>
+                    <option value="Pinned">Pinned</option>
+                    <option value="Wishlist">Wishlist</option>
                   </select>
                 </div>
 
@@ -504,6 +598,25 @@
                 <div class="form-row">
                   <label for="f-desc">Description <span style="color:#ccc;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
                   <textarea class="form-textarea" id="f-desc" placeholder="What's this book about?"></textarea>
+                </div>
+
+                <div class="form-row">
+                  <label>PDF File <span style="color:#ccc;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+                  <div class="file-drop" id="pdf-drop">
+                    <input type="file" id="f-pdf" accept=".pdf,application/pdf" />
+                    <div class="file-drop-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3d6cfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="12" y1="18" x2="12" y2="12"/>
+                        <line x1="9" y1="15" x2="15" y2="15"/>
+                      </svg>
+                    </div>
+                    <div class="file-drop-text">
+                      <div class="file-drop-label" id="pdf-filename">Click to upload PDF</div>
+                      <div class="file-drop-hint">PDF up to 50 MB</div>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="form-error" id="form-error"></div>
@@ -533,7 +646,20 @@
                   </div>
                 </div>
 
-                <div class="preview-card-label" style="margin-bottom:0.6rem;">Cover theme</div>
+                <div class="preview-card-label" style="margin-bottom:0.5rem;">Cover image <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#ccc;">(optional)</span></div>
+                <div class="cover-upload-row">
+                  <label class="cover-upload-btn" id="cover-upload-btn">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    <span id="cover-upload-label">Upload cover image</span>
+                    <input type="file" id="f-cover-image" accept="image/*" />
+                  </label>
+                  <button class="btn-remove-cover" id="btn-remove-cover" type="button">Remove</button>
+                </div>
+
+                <div class="preview-card-label" style="margin-bottom:0.6rem;" id="theme-label">Cover theme</div>
                 <div class="theme-grid" id="theme-grid">
                   <!-- injected by JS -->
                 </div>

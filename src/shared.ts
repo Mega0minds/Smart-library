@@ -1,6 +1,21 @@
 import { supabase } from './supabase';
 import type { User } from '@supabase/supabase-js';
 
+export interface Book {
+  id: string;
+  user_id: string;
+  title: string;
+  author: string;
+  genres: string[] | null;
+  status: string | null;
+  description: string | null;
+  cover_gradient: string | null;
+  cover_dark: boolean | null;
+  pdf_url: string | null;
+  cover_image_url: string | null;
+  created_at: string;
+}
+
 export async function initPage(): Promise<User | null> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) { window.location.href = '/'; return null; }
@@ -37,18 +52,90 @@ export async function initPage(): Promise<User | null> {
   return user;
 }
 
+export function showToast(msg: string) {
+  const existing = document.getElementById('bk-toast');
+  if (existing) existing.remove();
+  const el = document.createElement('div');
+  el.id = 'bk-toast';
+  el.textContent = msg;
+  el.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:0.6rem 1.25rem;border-radius:8px;font-size:0.82rem;font-weight:500;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.18);pointer-events:none;opacity:1;transition:opacity 0.3s;white-space:nowrap;';
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 2500);
+}
+
 const GENRE_STYLES: Record<string, { bg: string; color: string }> = {
-  'Self-improvement':  { bg: '#e8f5e9', color: '#2e7d32' },
-  'Novel':             { bg: '#f3e5f5', color: '#6a1b9a' },
-  'Literary fiction':  { bg: '#e8eaf6', color: '#283593' },
-  'Adventure fiction': { bg: '#fff3e0', color: '#e65100' },
-  'Historical fiction':{ bg: '#fce4ec', color: '#880e4f' },
-  'Thriller':          { bg: '#e3f2fd', color: '#1565c0' },
-  'Psychology':        { bg: '#e8eaf6', color: '#283593' },
-  'Finance':           { bg: '#e8f5e9', color: '#1b5e20' },
+  'Self-improvement':   { bg: '#e8f5e9', color: '#2e7d32' },
+  'Novel':              { bg: '#f3e5f5', color: '#6a1b9a' },
+  'Literary fiction':   { bg: '#e8eaf6', color: '#283593' },
+  'Adventure fiction':  { bg: '#fff3e0', color: '#e65100' },
+  'Historical fiction': { bg: '#fce4ec', color: '#880e4f' },
+  'Thriller':           { bg: '#e3f2fd', color: '#1565c0' },
+  'Psychology':         { bg: '#e8eaf6', color: '#283593' },
+  'Finance':            { bg: '#e8f5e9', color: '#1b5e20' },
 };
 
-export function setupBookDrawer() {
+function esc(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function escA(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
+export function renderBookCard(book: Book, cardActionLabel = ''): string {
+  const initials = book.author.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+  const coverValue = book.cover_image_url
+    ? `url('${escA(book.cover_image_url)}') center/cover no-repeat`
+    : (book.cover_gradient || '#333');
+  const dark = book.cover_dark;
+  const genres = book.genres || [];
+  const genresBadges = genres.map(g => {
+    const s = GENRE_STYLES[g] || { bg: '#f0f0f0', color: '#555' };
+    return `<span class="badge" style="background:${s.bg};color:${s.color};">${esc(g)}</span>`;
+  }).join('');
+  const authorShort = book.author.split(' ').map((n, i) => i === 0 ? n : n[0] + '.').join(' ');
+  const actionBtn = cardActionLabel
+    ? `<button class="card-action" data-book-action="true">${esc(cardActionLabel)}</button>`
+    : '';
+
+  return `
+    <div class="book-card"
+      data-id="${escA(book.id)}"
+      data-title="${escA(book.title)}"
+      data-author="${escA(book.author)}"
+      data-initials="${escA(initials)}"
+      data-cover="${escA(coverValue)}"
+      data-dark="${dark ? 'true' : 'false'}"
+      data-genres="${escA(genres.join(','))}"
+      data-status="${escA(book.status || '')}"
+      data-desc="${escA(book.description || '')}"
+      data-pdf="${escA(book.pdf_url || '')}">
+      <div class="book-cover">
+        <div class="cover-bg" style="background:${coverValue}">
+          <span class="cover-title${dark ? ' dark' : ''}">${esc(book.title)}</span>
+          <span class="cover-author-sm${dark ? ' dark' : ''}">${esc(book.author)}</span>
+        </div>
+      </div>
+      <div class="book-info">
+        <div class="book-title">${esc(book.title)}</div>
+        <div class="book-genres">${genresBadges}</div>
+        <div class="book-meta">
+          <div class="author-chip">
+            <div class="author-initial">${esc(initials)}</div>
+            ${esc(authorShort)}
+          </div>
+          ${actionBtn}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+export function setupBookDrawer(onRefresh?: () => Promise<void> | void) {
+  if (document.getElementById('book-drawer-overlay')) return;
+
+  let currentBookId = '';
+  let currentBookPdfUrl = '';
+
   const overlay = document.createElement('div');
   overlay.id = 'book-drawer-overlay';
   overlay.innerHTML = `
@@ -72,8 +159,8 @@ export function setupBookDrawer() {
         <p id="drawer-desc"></p>
         <div class="drawer-divider"></div>
         <div id="drawer-actions">
-          <button class="drawer-btn-primary">Start Reading</button>
-          <button class="drawer-btn-secondary">Add to Wishlist</button>
+          <button class="drawer-btn-primary" id="drawer-btn-start">Start Reading</button>
+          <button class="drawer-btn-secondary" id="drawer-btn-wishlist">Add to Wishlist</button>
         </div>
       </div>
     </div>
@@ -108,6 +195,7 @@ export function setupBookDrawer() {
     #drawer-actions{display:flex;flex-direction:column;gap:8px;}
     .drawer-btn-primary{width:100%;background:#3d6cfa;color:#fff;border:none;border-radius:8px;padding:0.58rem 1rem;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.14s;}
     .drawer-btn-primary:hover{background:#2a56e8;}
+    .drawer-btn-primary:disabled{background:#a0b4fc;cursor:not-allowed;}
     .drawer-btn-secondary{width:100%;background:#f7f8fc;color:#555;border:1px solid #ebebeb;border-radius:8px;padding:0.58rem 1rem;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.14s,color 0.14s,border-color 0.14s;}
     .drawer-btn-secondary:hover{background:#eef2ff;border-color:#c5d0ff;color:#3d6cfa;}
     @media(max-width:600px){#book-drawer{width:100%;}}
@@ -123,6 +211,9 @@ export function setupBookDrawer() {
     const genres   = (card.dataset.genres || '').split(',').map(g => g.trim()).filter(Boolean);
     const status   = card.dataset.status   || '';
     const desc     = card.dataset.desc     || '';
+
+    currentBookId     = card.dataset.id  || '';
+    currentBookPdfUrl = card.dataset.pdf || '';
 
     (document.getElementById('drawer-cover-bg') as HTMLElement).style.background = cover;
 
@@ -147,6 +238,12 @@ export function setupBookDrawer() {
     (document.getElementById('drawer-status') as HTMLElement).textContent = status;
     (document.getElementById('drawer-desc') as HTMLElement).textContent = desc;
 
+    const startBtn = document.getElementById('drawer-btn-start') as HTMLButtonElement;
+    startBtn.textContent = status === 'Reading' ? 'Continue Reading' : 'Start Reading';
+
+    const wishlistBtn = document.getElementById('drawer-btn-wishlist') as HTMLButtonElement;
+    wishlistBtn.textContent = status === 'Wishlist' ? 'Remove from Wishlist' : 'Add to Wishlist';
+
     overlay.classList.add('open');
     document.body.style.overflow = 'hidden';
   }
@@ -156,11 +253,42 @@ export function setupBookDrawer() {
     document.body.style.overflow = '';
   }
 
-  document.querySelectorAll<HTMLElement>('.book-card').forEach(card => {
-    card.addEventListener('click', () => openDrawer(card));
+  // Event delegation — catches clicks on dynamically rendered cards
+  document.addEventListener('click', e => {
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-book-action]')) return;
+    if (overlay.classList.contains('open') && target === overlay) { closeDrawer(); return; }
+    const card = target.closest('.book-card');
+    if (card && !overlay.contains(target)) openDrawer(card as HTMLElement);
   });
 
   document.getElementById('drawer-close')?.addEventListener('click', closeDrawer);
-  overlay.addEventListener('click', e => { if (e.target === overlay) closeDrawer(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+
+  document.getElementById('drawer-btn-start')?.addEventListener('click', async () => {
+    if (!currentBookId) return;
+    const btn = document.getElementById('drawer-btn-start') as HTMLButtonElement;
+    btn.disabled = true;
+    const { error } = await supabase.from('books').update({ status: 'Reading' }).eq('id', currentBookId);
+    btn.disabled = false;
+    if (error) { showToast('Error: ' + error.message); return; }
+    if (currentBookPdfUrl) window.open(currentBookPdfUrl, '_blank');
+    showToast('Happy reading! 📖');
+    closeDrawer();
+    if (onRefresh) await onRefresh();
+  });
+
+  document.getElementById('drawer-btn-wishlist')?.addEventListener('click', async () => {
+    if (!currentBookId) return;
+    const btn = document.getElementById('drawer-btn-wishlist') as HTMLButtonElement;
+    const removing = btn.textContent?.includes('Remove');
+    const newStatus = removing ? 'To read' : 'Wishlist';
+    btn.disabled = true;
+    const { error } = await supabase.from('books').update({ status: newStatus }).eq('id', currentBookId);
+    btn.disabled = false;
+    if (error) { showToast('Error: ' + error.message); return; }
+    showToast(removing ? 'Removed from wishlist' : 'Added to wishlist!');
+    closeDrawer();
+    if (onRefresh) await onRefresh();
+  });
 }

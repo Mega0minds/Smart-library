@@ -1,83 +1,99 @@
 import { supabase } from './supabase';
-import { setupBookDrawer } from './shared';
+import { initPage, setupBookDrawer, renderBookCard, Book } from './shared';
+
+const TAB_STATUS: Record<string, string | null> = {
+  pinned:   'Pinned',
+  reading:  'Reading',
+  'to-read': 'To read',
+  read:     'Read',
+  wishlist: 'Wishlist',
+  all:      null,
+};
 
 async function init() {
-  const { data: { session } } = await supabase.auth.getSession();
+  const user = await initPage();
+  if (!user) return;
 
-  if (!session) {
-    window.location.href = '/';
-    return;
-  }
-
-  document.getElementById('loading')!.style.display = 'none';
-  document.getElementById('app')!.style.display = 'flex';
-
-  const user = session.user;
-  const fullName: string = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
-  const initials = fullName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase();
-
-  document.getElementById('user-name')!.textContent = fullName;
-  document.getElementById('user-email')!.textContent = user.email ?? '';
-  document.getElementById('user-avatar')!.textContent = initials;
-
-  document.getElementById('btn-logout')?.addEventListener('click', async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/';
-  });
-
-  // Tabs
-  const tabs = document.querySelectorAll<HTMLButtonElement>('.tab-btn');
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      tabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-    });
-  });
-
-  // Reading checklist — persist per-user in localStorage
-  const checklistKey = `bk_checklist_${user.id}`;
-  const saved: Record<string, boolean> = JSON.parse(localStorage.getItem(checklistKey) || '{}');
-
-  document.querySelectorAll<HTMLInputElement>('.checklist-item input[type="checkbox"]').forEach(cb => {
-    if (saved[cb.id]) {
-      cb.checked = true;
-      cb.closest('.checklist-item')?.classList.add('checked');
-    }
-    cb.addEventListener('change', () => {
-      const state: Record<string, boolean> = JSON.parse(localStorage.getItem(checklistKey) || '{}');
-      state[cb.id] = cb.checked;
-      localStorage.setItem(checklistKey, JSON.stringify(state));
-      cb.closest('.checklist-item')?.classList.toggle('checked', cb.checked);
-    });
-  });
-
-  // Mobile sidebar drawer
-  const sidebar = document.getElementById('sidebar')!;
+  // Mobile sidebar
+  const sidebar        = document.getElementById('sidebar')!;
   const sidebarOverlay = document.getElementById('sidebar-overlay')!;
-  const sidebarToggle = document.getElementById('sidebar-toggle')!;
-
-  function openSidebar() {
-    sidebar.classList.add('open');
-    sidebarOverlay.classList.add('open');
-    document.body.style.overflow = 'hidden';
-  }
-  function closeSidebar() {
-    sidebar.classList.remove('open');
-    sidebarOverlay.classList.remove('open');
-    document.body.style.overflow = '';
-  }
-
-  sidebarToggle.addEventListener('click', () => {
-    sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
-  });
+  const sidebarToggle  = document.getElementById('sidebar-toggle')!;
+  function openSidebar()  { sidebar.classList.add('open');    sidebarOverlay.classList.add('open');    document.body.style.overflow = 'hidden'; }
+  function closeSidebar() { sidebar.classList.remove('open'); sidebarOverlay.classList.remove('open'); document.body.style.overflow = ''; }
+  sidebarToggle.addEventListener('click', () => sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
   sidebarOverlay.addEventListener('click', closeSidebar);
   sidebar.querySelectorAll('a').forEach(link => link.addEventListener('click', closeSidebar));
 
-  supabase.auth.onAuthStateChange((_event, s) => {
-    if (!s) window.location.href = '/';
+  const grid = document.getElementById('book-grid')!;
+  let books: Book[] = [];
+  let activeTab = 'all';
+
+  async function loadBooks() {
+    const { data, error } = await supabase
+      .from('books')
+      .select('*')
+      .eq('user_id', user!.id)
+      .order('created_at', { ascending: false });
+
+    if (error) { console.error(error); return; }
+    books = (data as Book[]) || [];
+    renderGrid();
+    updateTabCounts();
+  }
+
+  function renderGrid() {
+    const statusFilter = TAB_STATUS[activeTab];
+    const filtered = statusFilter === null
+      ? books
+      : books.filter(b => b.status === statusFilter);
+
+    if (filtered.length === 0) {
+      grid.innerHTML = `<div style="grid-column:1/-1;padding:3rem 0;text-align:center;color:#aaa;font-size:0.85rem;">
+        ${activeTab === 'all'
+          ? 'No books yet. <a href="/add-book.html" style="color:#3d6cfa;text-decoration:none;font-weight:600;">Add your first book →</a>'
+          : 'No books in this category.'}
+      </div>`;
+      return;
+    }
+
+    grid.innerHTML = filtered.map(b => renderBookCard(b)).join('');
+  }
+
+  function updateTabCounts() {
+    document.querySelectorAll<HTMLElement>('.tab-btn').forEach(btn => {
+      const tab = btn.dataset.tab || '';
+      const statusFilter = TAB_STATUS[tab];
+      const count = statusFilter === null
+        ? books.length
+        : books.filter(b => b.status === statusFilter).length;
+      const countEl = btn.querySelector('.tab-count');
+      if (countEl) countEl.textContent = String(count);
+    });
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      activeTab = btn.dataset.tab || 'all';
+      renderGrid();
+    });
   });
 
-  setupBookDrawer();
+  const searchInput = document.querySelector<HTMLInputElement>('.search-wrap input');
+  searchInput?.addEventListener('input', () => {
+    const q = searchInput.value.toLowerCase();
+    grid.querySelectorAll<HTMLElement>('.book-card').forEach(card => {
+      const match = (card.dataset.title  || '').toLowerCase().includes(q)
+                 || (card.dataset.author || '').toLowerCase().includes(q);
+      card.style.display = match ? '' : 'none';
+    });
+  });
+
+  await loadBooks();
+  setupBookDrawer(loadBooks);
+
+  supabase.auth.onAuthStateChange((_e, s) => { if (!s) window.location.href = '/'; });
 }
 
 init();
