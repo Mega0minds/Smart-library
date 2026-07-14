@@ -267,7 +267,12 @@ function setupForm(userId: string) {
     let pdfUrl: string | null = null;
     if (pdfFile) {
       pdfUrl = await uploadFile('book-pdfs', `${stamp}-${pdfFile.name}`, pdfFile);
-      if (!pdfUrl) showToast('PDF upload failed — book will be saved without it.');
+      if (!pdfUrl) {
+        btn.classList.remove('loading');
+        btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add to Library`;
+        showError('PDF upload failed. Check that the "book-pdfs" storage bucket exists in your Supabase project and has the correct RLS policy, then try again.');
+        return;
+      }
     }
 
     let coverImageUrl: string | null = null;

@@ -130,6 +130,43 @@ export function renderBookCard(book: Book, cardActionLabel = ''): string {
   `;
 }
 
+function openPdfViewer(src: string) {
+  const existing = document.getElementById('pdf-viewer-overlay');
+  if (existing) existing.remove();
+
+  const el = document.createElement('div');
+  el.id = 'pdf-viewer-overlay';
+  el.innerHTML = `
+    <div id="pdf-viewer-bar">
+      <span id="pdf-viewer-title">Reading</span>
+      <button id="pdf-viewer-close" title="Close">✕</button>
+    </div>
+    <iframe id="pdf-viewer-frame" src="${src}" allowfullscreen></iframe>
+  `;
+  document.body.appendChild(el);
+
+  const style = document.createElement('style');
+  style.id = 'pdf-viewer-style';
+  document.getElementById('pdf-viewer-style')?.remove();
+  style.textContent = `
+    #pdf-viewer-overlay{position:fixed;inset:0;z-index:500;display:flex;flex-direction:column;background:#1a1a1a;}
+    #pdf-viewer-bar{display:flex;align-items:center;justify-content:space-between;padding:0 1rem;height:44px;background:#111;flex-shrink:0;border-bottom:1px solid #2a2a2a;}
+    #pdf-viewer-title{font-size:0.82rem;font-weight:600;color:#ccc;font-family:'Inter',sans-serif;}
+    #pdf-viewer-close{background:rgba(255,255,255,0.08);border:none;color:#ccc;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:0.85rem;display:flex;align-items:center;justify-content:center;transition:background 0.14s;line-height:1;}
+    #pdf-viewer-close:hover{background:rgba(255,255,255,0.18);color:#fff;}
+    #pdf-viewer-frame{flex:1;width:100%;border:none;background:#fff;}
+  `;
+  document.head.appendChild(style);
+
+  document.getElementById('pdf-viewer-close')?.addEventListener('click', () => el.remove());
+  document.addEventListener('keydown', function handler(e) {
+    if (e.key === 'Escape' && document.getElementById('pdf-viewer-overlay')) {
+      el.remove();
+      document.removeEventListener('keydown', handler);
+    }
+  });
+}
+
 function extractPdfPath(url: string): string | null {
   const marker = '/object/public/book-pdfs/';
   const idx = url.indexOf(marker);
@@ -167,6 +204,10 @@ export function setupBookDrawer(onRefresh?: () => Promise<void> | void) {
         <div class="drawer-divider"></div>
         <div id="drawer-actions">
           <button class="drawer-btn-primary" id="drawer-btn-start">Start Reading</button>
+          <label class="drawer-btn-secondary" id="drawer-btn-attach" style="display:none;cursor:pointer;text-align:center;">
+            Attach PDF
+            <input type="file" id="drawer-pdf-input" accept=".pdf,application/pdf" style="display:none" />
+          </label>
           <button class="drawer-btn-secondary" id="drawer-btn-wishlist">Add to Wishlist</button>
         </div>
       </div>
@@ -221,6 +262,7 @@ export function setupBookDrawer(onRefresh?: () => Promise<void> | void) {
 
     currentBookId     = card.dataset.id  || '';
     currentBookPdfUrl = card.dataset.pdf || '';
+    console.log('[drawer] pdf_url:', currentBookPdfUrl || '(empty — no PDF stored for this book)');
 
     (document.getElementById('drawer-cover-bg') as HTMLElement).style.background = cover;
 
@@ -247,6 +289,10 @@ export function setupBookDrawer(onRefresh?: () => Promise<void> | void) {
 
     const startBtn = document.getElementById('drawer-btn-start') as HTMLButtonElement;
     startBtn.textContent = status === 'Reading' ? 'Continue Reading' : 'Start Reading';
+    startBtn.style.display = currentBookPdfUrl ? '' : 'none';
+
+    const attachBtn = document.getElementById('drawer-btn-attach') as HTMLElement;
+    attachBtn.style.display = currentBookPdfUrl ? 'none' : '';
 
     const wishlistBtn = document.getElementById('drawer-btn-wishlist') as HTMLButtonElement;
     wishlistBtn.textContent = status === 'Wishlist' ? 'Remove from Wishlist' : 'Add to Wishlist';
@@ -281,36 +327,86 @@ export function setupBookDrawer(onRefresh?: () => Promise<void> | void) {
       return;
     }
 
-    // Open a blank window immediately (synchronous) so popup blocker doesn't trigger,
-    // then navigate it to the signed URL once we have it.
-    const win = window.open('', '_blank');
+    btn.disabled = true;
+    btn.textContent = 'Opening…';
 
     const alreadyReading = btn.textContent?.includes('Continue');
     if (!alreadyReading) {
-      btn.disabled = true;
       const { error } = await supabase.from('books').update({ status: 'Reading' }).eq('id', currentBookId);
-      btn.disabled = false;
-      if (error) { win?.close(); showToast('Error updating status: ' + error.message); return; }
+      if (error) {
+        btn.disabled = false;
+        btn.textContent = 'Continue Reading';
+        showToast('Error updating status: ' + error.message);
+        return;
+      }
     }
 
-    // Extract the storage path from the stored URL and get a signed URL
     const storagePath = extractPdfPath(currentBookPdfUrl);
+    let pdfSrc = currentBookPdfUrl;
     if (storagePath) {
-      const { data, error: signErr } = await supabase.storage.from('book-pdfs').createSignedUrl(storagePath, 3600);
-      if (data?.signedUrl && win) {
-        win.location.href = data.signedUrl;
+      const { data, error: signErr } = await supabase.storage.from('book-pdfs').createSignedUrl(storagePath, 7200);
+      if (data?.signedUrl) {
+        pdfSrc = data.signedUrl;
       } else {
-        win?.close();
+        btn.disabled = false;
+        btn.textContent = 'Continue Reading';
         showToast('Could not open PDF: ' + (signErr?.message || 'Access denied'));
         return;
       }
-    } else {
-      // Fallback: bucket may be public — use URL directly
-      if (win) win.location.href = currentBookPdfUrl;
     }
 
-    showToast('Happy reading! 📖');
+    btn.disabled = false;
+    btn.textContent = 'Continue Reading';
+
+    openPdfViewer(pdfSrc);
     closeDrawer();
+    if (onRefresh) await onRefresh();
+  });
+
+  document.getElementById('drawer-pdf-input')?.addEventListener('change', async (e) => {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file || !currentBookId) return;
+
+    const attachBtn = document.getElementById('drawer-btn-attach') as HTMLElement;
+    attachBtn.textContent = 'Uploading…';
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) {
+      showToast('Session expired, please log in again.');
+      attachBtn.innerHTML = 'Attach PDF<input type="file" id="drawer-pdf-input" accept=".pdf,application/pdf" style="display:none" />';
+      return;
+    }
+
+    const path = `${userId}/${Date.now()}-${file.name}`;
+    const { error: uploadError } = await supabase.storage.from('book-pdfs').upload(path, file, { upsert: true });
+
+    if (uploadError) {
+      showToast('Upload failed: ' + uploadError.message);
+      console.error('[attach pdf] upload error:', uploadError);
+      attachBtn.textContent = 'Attach PDF';
+      input.value = '';
+      return;
+    }
+
+    const pdfUrl = supabase.storage.from('book-pdfs').getPublicUrl(path).data.publicUrl;
+    const { error: saveError } = await supabase.from('books').update({ pdf_url: pdfUrl }).eq('id', currentBookId);
+
+    input.value = '';
+
+    if (saveError) {
+      showToast('Saved to storage but failed to update book: ' + saveError.message);
+      console.error('[attach pdf] save error:', saveError);
+      attachBtn.textContent = 'Attach PDF';
+      return;
+    }
+
+    currentBookPdfUrl = pdfUrl;
+    attachBtn.style.display = 'none';
+    const startBtn = document.getElementById('drawer-btn-start') as HTMLButtonElement;
+    startBtn.style.display = '';
+    showToast('PDF attached! Now click Start Reading.');
     if (onRefresh) await onRefresh();
   });
 

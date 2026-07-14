@@ -93,6 +93,32 @@ async function init() {
   await loadBooks();
   setupBookDrawer(loadBooks);
 
+  const confirmOverlay = document.getElementById('confirm-overlay')!;
+  document.getElementById('btn-delete-all')?.addEventListener('click', () => {
+    confirmOverlay.classList.add('open');
+  });
+  document.getElementById('confirm-cancel')?.addEventListener('click', () => {
+    confirmOverlay.classList.remove('open');
+  });
+  confirmOverlay.addEventListener('click', e => {
+    if (e.target === confirmOverlay) confirmOverlay.classList.remove('open');
+  });
+
+  document.getElementById('confirm-delete')?.addEventListener('click', async () => {
+    const btn = document.getElementById('confirm-delete') as HTMLButtonElement;
+    btn.disabled = true;
+    btn.textContent = 'Deleting…';
+    const { error } = await supabase.from('books').delete().eq('user_id', user!.id);
+    btn.disabled = false;
+    btn.textContent = 'Yes, delete all';
+    if (error) {
+      alert('Error: ' + error.message);
+      return;
+    }
+    confirmOverlay.classList.remove('open');
+    await loadBooks();
+  });
+
   supabase.auth.onAuthStateChange((_e, s) => { if (!s) window.location.href = '/'; });
 }
 
