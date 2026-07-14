@@ -160,6 +160,7 @@ export function setupBookDrawer(onRefresh?: () => Promise<void> | void) {
         <div class="drawer-divider"></div>
         <div id="drawer-actions">
           <button class="drawer-btn-primary" id="drawer-btn-start">Start Reading</button>
+          <input type="file" id="drawer-pdf-input" accept=".pdf,application/pdf" style="display:none" />
           <button class="drawer-btn-secondary" id="drawer-btn-wishlist">Add to Wishlist</button>
         </div>
       </div>
@@ -239,7 +240,11 @@ export function setupBookDrawer(onRefresh?: () => Promise<void> | void) {
     (document.getElementById('drawer-desc') as HTMLElement).textContent = desc;
 
     const startBtn = document.getElementById('drawer-btn-start') as HTMLButtonElement;
-    startBtn.textContent = status === 'Reading' ? 'Continue Reading' : 'Start Reading';
+    if (currentBookPdfUrl) {
+      startBtn.textContent = status === 'Reading' ? 'Continue Reading' : 'Start Reading';
+    } else {
+      startBtn.textContent = 'Attach PDF to Read';
+    }
 
     const wishlistBtn = document.getElementById('drawer-btn-wishlist') as HTMLButtonElement;
     wishlistBtn.textContent = status === 'Wishlist' ? 'Remove from Wishlist' : 'Add to Wishlist';
@@ -269,12 +274,14 @@ export function setupBookDrawer(onRefresh?: () => Promise<void> | void) {
     if (!currentBookId) return;
     const btn = document.getElementById('drawer-btn-start') as HTMLButtonElement;
 
-    // Open PDF synchronously before any await — browsers block window.open after async calls
-    if (currentBookPdfUrl) {
-      window.open(currentBookPdfUrl, '_blank');
-    } else {
-      showToast('No PDF available for this book.');
+    if (!currentBookPdfUrl) {
+      // No PDF attached yet — trigger file picker
+      (document.getElementById('drawer-pdf-input') as HTMLInputElement).click();
+      return;
     }
+
+    // Open PDF synchronously before any await — browsers block window.open after async calls
+    window.open(currentBookPdfUrl, '_blank');
 
     const alreadyReading = btn.textContent?.includes('Continue');
     if (!alreadyReading) {
@@ -284,7 +291,46 @@ export function setupBookDrawer(onRefresh?: () => Promise<void> | void) {
       if (error) { showToast('Error updating status: ' + error.message); return; }
     }
 
-    if (currentBookPdfUrl) showToast('Happy reading! 📖');
+    showToast('Happy reading! 📖');
+    closeDrawer();
+    if (onRefresh) await onRefresh();
+  });
+
+  document.getElementById('drawer-pdf-input')?.addEventListener('change', async (e) => {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file || !currentBookId) return;
+
+    const btn = document.getElementById('drawer-btn-start') as HTMLButtonElement;
+    btn.disabled = true;
+    btn.textContent = 'Uploading…';
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) { showToast('Session expired, please log in again.'); btn.disabled = false; btn.textContent = 'Attach PDF to Read'; return; }
+
+    const path = `${userId}/${Date.now()}-${file.name}`;
+    const { error: uploadError } = await supabase.storage.from('book-pdfs').upload(path, file, { upsert: true });
+
+    if (uploadError) {
+      showToast('Upload failed: ' + uploadError.message);
+      btn.disabled = false;
+      btn.textContent = 'Attach PDF to Read';
+      input.value = '';
+      return;
+    }
+
+    const pdfUrl = supabase.storage.from('book-pdfs').getPublicUrl(path).data.publicUrl;
+    const { error: saveError } = await supabase.from('books').update({ pdf_url: pdfUrl, status: 'Reading' }).eq('id', currentBookId);
+
+    btn.disabled = false;
+    input.value = '';
+
+    if (saveError) { showToast('Error saving PDF: ' + saveError.message); btn.textContent = 'Attach PDF to Read'; return; }
+
+    currentBookPdfUrl = pdfUrl;
+    window.open(pdfUrl, '_blank');
+    showToast('PDF uploaded! Happy reading! 📖');
     closeDrawer();
     if (onRefresh) await onRefresh();
   });
