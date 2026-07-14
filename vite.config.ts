@@ -11,6 +11,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         dashboard: resolve(__dirname, 'dashboard.html'),
+        addBook: resolve(__dirname, 'add-book.html'),
         authors: resolve(__dirname, 'authors.html'),
         highlights: resolve(__dirname, 'highlights.html'),
         wishlist: resolve(__dirname, 'wishlist.html'),
