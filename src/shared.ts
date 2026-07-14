@@ -268,12 +268,23 @@ export function setupBookDrawer(onRefresh?: () => Promise<void> | void) {
   document.getElementById('drawer-btn-start')?.addEventListener('click', async () => {
     if (!currentBookId) return;
     const btn = document.getElementById('drawer-btn-start') as HTMLButtonElement;
-    btn.disabled = true;
-    const { error } = await supabase.from('books').update({ status: 'Reading' }).eq('id', currentBookId);
-    btn.disabled = false;
-    if (error) { showToast('Error: ' + error.message); return; }
-    if (currentBookPdfUrl) window.open(currentBookPdfUrl, '_blank');
-    showToast('Happy reading! 📖');
+
+    // Open PDF synchronously before any await — browsers block window.open after async calls
+    if (currentBookPdfUrl) {
+      window.open(currentBookPdfUrl, '_blank');
+    } else {
+      showToast('No PDF available for this book.');
+    }
+
+    const alreadyReading = btn.textContent?.includes('Continue');
+    if (!alreadyReading) {
+      btn.disabled = true;
+      const { error } = await supabase.from('books').update({ status: 'Reading' }).eq('id', currentBookId);
+      btn.disabled = false;
+      if (error) { showToast('Error updating status: ' + error.message); return; }
+    }
+
+    if (currentBookPdfUrl) showToast('Happy reading! 📖');
     closeDrawer();
     if (onRefresh) await onRefresh();
   });
