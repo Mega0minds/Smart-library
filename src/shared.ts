@@ -130,6 +130,13 @@ export function renderBookCard(book: Book, cardActionLabel = ''): string {
   `;
 }
 
+function extractPdfPath(url: string): string | null {
+  const marker = '/object/public/book-pdfs/';
+  const idx = url.indexOf(marker);
+  if (idx === -1) return null;
+  return decodeURIComponent(url.substring(idx + marker.length).split('?')[0]);
+}
+
 export function setupBookDrawer(onRefresh?: () => Promise<void> | void) {
   if (document.getElementById('book-drawer-overlay')) return;
 
@@ -160,7 +167,6 @@ export function setupBookDrawer(onRefresh?: () => Promise<void> | void) {
         <div class="drawer-divider"></div>
         <div id="drawer-actions">
           <button class="drawer-btn-primary" id="drawer-btn-start">Start Reading</button>
-          <input type="file" id="drawer-pdf-input" accept=".pdf,application/pdf" style="display:none" />
           <button class="drawer-btn-secondary" id="drawer-btn-wishlist">Add to Wishlist</button>
         </div>
       </div>
@@ -240,11 +246,7 @@ export function setupBookDrawer(onRefresh?: () => Promise<void> | void) {
     (document.getElementById('drawer-desc') as HTMLElement).textContent = desc;
 
     const startBtn = document.getElementById('drawer-btn-start') as HTMLButtonElement;
-    if (currentBookPdfUrl) {
-      startBtn.textContent = status === 'Reading' ? 'Continue Reading' : 'Start Reading';
-    } else {
-      startBtn.textContent = 'Attach PDF to Read';
-    }
+    startBtn.textContent = status === 'Reading' ? 'Continue Reading' : 'Start Reading';
 
     const wishlistBtn = document.getElementById('drawer-btn-wishlist') as HTMLButtonElement;
     wishlistBtn.textContent = status === 'Wishlist' ? 'Remove from Wishlist' : 'Add to Wishlist';
@@ -275,62 +277,39 @@ export function setupBookDrawer(onRefresh?: () => Promise<void> | void) {
     const btn = document.getElementById('drawer-btn-start') as HTMLButtonElement;
 
     if (!currentBookPdfUrl) {
-      // No PDF attached yet — trigger file picker
-      (document.getElementById('drawer-pdf-input') as HTMLInputElement).click();
+      showToast('No PDF attached to this book.');
       return;
     }
 
-    // Open PDF synchronously before any await — browsers block window.open after async calls
-    window.open(currentBookPdfUrl, '_blank');
+    // Open a blank window immediately (synchronous) so popup blocker doesn't trigger,
+    // then navigate it to the signed URL once we have it.
+    const win = window.open('', '_blank');
 
     const alreadyReading = btn.textContent?.includes('Continue');
     if (!alreadyReading) {
       btn.disabled = true;
       const { error } = await supabase.from('books').update({ status: 'Reading' }).eq('id', currentBookId);
       btn.disabled = false;
-      if (error) { showToast('Error updating status: ' + error.message); return; }
+      if (error) { win?.close(); showToast('Error updating status: ' + error.message); return; }
+    }
+
+    // Extract the storage path from the stored URL and get a signed URL
+    const storagePath = extractPdfPath(currentBookPdfUrl);
+    if (storagePath) {
+      const { data, error: signErr } = await supabase.storage.from('book-pdfs').createSignedUrl(storagePath, 3600);
+      if (data?.signedUrl && win) {
+        win.location.href = data.signedUrl;
+      } else {
+        win?.close();
+        showToast('Could not open PDF: ' + (signErr?.message || 'Access denied'));
+        return;
+      }
+    } else {
+      // Fallback: bucket may be public — use URL directly
+      if (win) win.location.href = currentBookPdfUrl;
     }
 
     showToast('Happy reading! 📖');
-    closeDrawer();
-    if (onRefresh) await onRefresh();
-  });
-
-  document.getElementById('drawer-pdf-input')?.addEventListener('change', async (e) => {
-    const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file || !currentBookId) return;
-
-    const btn = document.getElementById('drawer-btn-start') as HTMLButtonElement;
-    btn.disabled = true;
-    btn.textContent = 'Uploading…';
-
-    const { data: { session } } = await supabase.auth.getSession();
-    const userId = session?.user?.id;
-    if (!userId) { showToast('Session expired, please log in again.'); btn.disabled = false; btn.textContent = 'Attach PDF to Read'; return; }
-
-    const path = `${userId}/${Date.now()}-${file.name}`;
-    const { error: uploadError } = await supabase.storage.from('book-pdfs').upload(path, file, { upsert: true });
-
-    if (uploadError) {
-      showToast('Upload failed: ' + uploadError.message);
-      btn.disabled = false;
-      btn.textContent = 'Attach PDF to Read';
-      input.value = '';
-      return;
-    }
-
-    const pdfUrl = supabase.storage.from('book-pdfs').getPublicUrl(path).data.publicUrl;
-    const { error: saveError } = await supabase.from('books').update({ pdf_url: pdfUrl, status: 'Reading' }).eq('id', currentBookId);
-
-    btn.disabled = false;
-    input.value = '';
-
-    if (saveError) { showToast('Error saving PDF: ' + saveError.message); btn.textContent = 'Attach PDF to Read'; return; }
-
-    currentBookPdfUrl = pdfUrl;
-    window.open(pdfUrl, '_blank');
-    showToast('PDF uploaded! Happy reading! 📖');
     closeDrawer();
     if (onRefresh) await onRefresh();
   });
